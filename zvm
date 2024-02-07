@@ -1,0 +1,280 @@
+#!/bin/sh
+
+readonly NOERR=0
+readonly ARGERR=1
+readonly CMDERR=2
+
+readonly url="https://ziglang.org/download/index.json"
+readonly required_progs="jq,curl"
+readonly install_dir="$HOME/.local/share/zvm"
+readonly os="linux"
+readonly arch="$(uname -m)"
+readonly bin_dir="$HOME/.local/bin"
+readonly bin_name="zig"
+readonly self_name=$(basename $0)
+
+## Commands
+c_list=0
+
+## Options
+o_installed=0
+o_remote=0
+o_verbose=0
+
+vrb() {
+    [ $o_verbose -eq 1 ] && echo "vrb: ${1}" >&2
+}
+
+err() {
+    echo "err: ${1}" >&2
+}
+
+die() {
+    err "${1}" && exit 1
+}
+
+panic_missing_prog() {
+    command -v $1 > /dev/null 2>&1 || die "'${1}' is required to run this script"
+}
+
+ensure_required_progs() {
+    (
+        IFS=','; for prog in $required_progs; do
+            panic_missing_prog $prog
+        done
+    )
+}
+
+### Command functions
+
+# list - List versions
+#   [--remote]     List versions available in remote index
+#   [--installed]  List versions installed in $install_dir
+cmd_list() {
+    args_parse $@ > /dev/null
+
+    versions=""
+
+    if [ $o_installed -eq 1 ]; then
+        versions="$(fd --maxdepth 1 . $install_dir -x basename)"
+        echo "${versions}"
+    fi
+
+    if [ $o_remote -eq 1 ]; then
+        index=$(index_fetch)
+        versions=$(index_list_versions "${index}")
+        echo "${versions}"
+    fi
+
+
+    return $NOERR
+}
+
+# install - Install version from remote index
+#   <version>  Version to install
+cmd_install() {
+    args_parse $@ > /dev/null
+
+    vrb "attempting to lookup version '$1'"
+
+    if [ -z "$1" ]; then
+        err "no version provided; see available versions with '$self_name list --remote'"
+        return $CMDERR
+    fi
+
+    index=$(index_fetch)
+    found=0
+    for version in $(index_list_versions "$index"); do
+        if [ "$version" == "$1" ]; then
+            found=1
+            break;
+        fi
+    done
+
+    if [ $found -ne 1 ]; then
+        err "version '$1' was not found in remote index"
+        return $CMDERR
+    fi
+
+    release=$(jq ".\"$version\"" <<< "$index")
+
+    if [ -z "$release" ]; then
+        err "failed fetching '$1' from index"
+        return $CMDERR
+    fi
+
+    release_download "$1" "$release"
+    if [ $? -ne $NOERR ]; then
+        return $CMDERR
+    fi
+
+    release_extract "$1" "$release"
+    if [ $? -ne $NOERR ]; then
+        return $CMDERR
+    fi
+
+    release_install "$1" "$release"
+    if [ $? -ne $NOERR ]; then
+        return $CMDERR
+    fi
+}
+
+# use - Use an installed version
+#   <version> Version to use
+cmd_use() {
+    found=$(ls "$install_dir/$1" > /dev/null 2>&1)
+
+    if [ $? -ne 0 ]; then
+        err "version '$1' was not installed; install it with '$self_name install $1'"
+        return $CMDERR
+    fi
+
+    release_install "$1"
+    if [ $? -ne $NOERR ]; then
+        return $CMDERR
+    fi
+}
+
+# Return:
+#   1  unrecognized argument
+#   2  command error
+args_parse() {
+    for arg in "$@"; do
+        case $1 in
+            # Parse commands
+            list)
+                shift
+                cmd_list $@
+                exit $?
+                ;;
+            install)
+                shift
+                cmd_install $@
+                exit $?
+                ;;
+            use)
+                shift
+                cmd_use $@
+                exit $?
+                ;;
+
+            # Parse options
+            --installed)
+                o_installed=1
+                shift
+                ;;
+            --remote)
+                o_remote=1
+                shift
+                ;;
+            -l | --list)
+                o_list=1
+                shift
+                ;;
+            --latest)
+                o_latest=1
+                shift
+                ;;
+            -v | --verbose)
+                o_verbose=1
+                shift
+                ;;
+            *)
+                echo "unrecognized argument '$1'"
+                return $ARGERR
+                ;;
+        esac
+    done
+}
+
+args_parse_strict() {
+    msg=$(args_parse $@)
+
+    if [ $? -eq $ARGERR ]; then
+        die "$msg"
+    fi
+
+    if [ -n "$msg" ]; then
+        echo "${msg}"
+    fi
+}
+
+index_fetch() {
+    vrb "fetching index from ${url}"
+    echo $(curl -s "${url}")
+}
+
+index_list_versions() {
+    jq -r 'keys_unsorted | .[]' <<< $1
+}
+
+# Download a release from the remote index
+#   $1  Release name
+#   $2  Release JSON object
+release_download() {
+    release_url=$(jq -r ".\"$arch-$os\".tarball" <<< "$2")
+    filename="$(basename $release_url)"
+
+    vrb "filename: $filename"
+
+    release_version=$(basename $filename .tar.xz)
+    release_version=${release_version#"$bin_name-$os-$arch-"}
+
+    if [ -d "$install_dir/$1/$(basename $filename .tar.xz)" ]; then
+        echo "version '$1' is already installed ($release_version)"
+        exit $NOERR
+    fi
+
+    vrb "release url: $release_url"
+
+    curl_response=$(curl -s --create-dirs --output "$install_dir/$1/$filename" \
+        "$release_url" 2>&1)
+
+    if [ $? -ne $NOERR ]; then
+        err "failed downloading tarball"
+        err "curl: $curl_response"
+        return $CMDERR
+    fi
+}
+
+# Extract a downloaded release tarball
+#   $1  Release name
+#   $2  Release JSON object
+release_extract() {
+    tarball=$(fd -t f -e xz . "$install_dir/$1")
+
+    vrb "tarball: $tarball"
+
+    tar_output=$(tar -xf $tarball -C $(dirname $tarball) 2>&1)
+
+    if [ $? -ne $NOERR ]; then
+        err "failed extracting tarball"
+        err "tar: $tar_output"
+        return $CMDERR
+    fi
+}
+
+# Install to $bin_dir via symlink
+#   $1  Release name
+#   $2  Release JSON object
+release_install() {
+    release_version="$1"
+    if [ "$1" == "master" ]; then
+        if [ -z "$2" ]; then
+            release_version=$(fd --maxdepth 1 -t d . "$install_dir/$1" -x basename)
+            release_version=${release_version#"$bin_name-$os-$arch-"}
+        else
+            release_version=$(jq -r ".version" <<< "$2")
+        fi
+    fi
+
+    ln_output=$(ln -sf "$install_dir/$1/$bin_name-$os-$arch-$release_version/$bin_name" "$bin_dir/$bin_name" 2>&1)
+
+    if [ $? -ne $NOERR ]; then
+        err "failed installing release"
+        err "ln: $ln_output"
+        return $CMDERR
+    fi
+}
+
+ensure_required_progs && args_parse_strict $@
