@@ -13,13 +13,33 @@ readonly bin_dir="$HOME/.local/bin"
 readonly bin_name="zig"
 readonly self_name=$(basename $0)
 
-## Commands
-c_list=0
-
 ## Options
 o_installed=0
 o_remote=0
 o_verbose=0
+
+usage() {
+    cat <<usage_text
+$self_name - Zig Version Manager
+
+Usage: zvm [OPTIONS] [command] [...]
+
+Options:
+  -v  Enable verbose script output
+
+Commands:
+  list [OPTIONS]       List Zig versions available in the remote index
+    --installed        List installed Zig versions
+
+  install <version>    Install a Zig version
+
+  use <version>        Use an installed Zig version
+
+  uninstall <version>  Uninstall a Zig version
+  help                 Show this help page
+
+usage_text
+}
 
 vrb() {
     [ $o_verbose -eq 1 ] && echo "vrb: ${1}" >&2
@@ -196,13 +216,9 @@ args_parse() {
                 o_remote=1
                 shift
                 ;;
-            -l | --list)
-                o_list=1
-                shift
-                ;;
-            --latest)
-                o_latest=1
-                shift
+            -h | --help | help)
+                usage
+                exit 0
                 ;;
             -v | --verbose)
                 o_verbose=1
