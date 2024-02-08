@@ -122,6 +122,32 @@ cmd_install() {
     fi
 }
 
+# uninstall - Uninstall version
+#   <version> Version to uninstall
+cmd_uninstall() {
+    if [ -z "$1" ]; then
+        err "missing version"
+        return $CMDERR
+    fi
+
+    vrb "uninstalling '$1'"
+
+    found=$(ls "$install_dir/$1" > /dev/null 2>&1)
+
+    if [ $? -ne 0 ]; then
+        err "version '$1' is not installed"
+        return $CMDERR
+    fi
+
+    rm -r "$install_dir/$1" > /dev/null 2>&1
+    if [ $? -ne $NOERR ]; then
+        err "failed uninstalling '$1'"
+        return $CMDERR
+    fi
+
+    vrb "successfully uninstalled '$1'"
+}
+
 # use - Use an installed version
 #   <version> Version to use
 cmd_use() {
@@ -155,7 +181,12 @@ args_parse() {
                 cmd_install $@
                 exit $?
                 ;;
-            use)
+            uninstall)
+                shift
+                cmd_uninstall $@
+                exit $?
+                ;;
+           use)
                 shift
                 cmd_use $@
                 exit $?
