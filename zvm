@@ -49,25 +49,20 @@ ensure_required_progs() {
 
 # list - List versions
 #   [--remote]     List versions available in remote index
-#   [--installed]  List versions installed in $install_dir
 cmd_list() {
     args_parse $@ > /dev/null
 
     versions=""
 
-    if [ $o_installed -eq 1 ]; then
-        versions="$(fd --maxdepth 1 . $install_dir -x basename)"
-        echo "${versions}"
-    fi
-
     if [ $o_remote -eq 1 ]; then
         index=$(index_fetch)
         versions=$(index_list_versions "${index}")
         echo "${versions}"
+        return $NOERR
     fi
 
-
-    return $NOERR
+    versions="$(fd --maxdepth 1 . $install_dir -x basename)"
+    echo "${versions}"
 }
 
 # install - Install version from remote index
