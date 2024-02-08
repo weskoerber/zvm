@@ -18,8 +18,8 @@ A script to manage your [zig](https://ziglang.org) versions.
 List zig versions.
 
 ```shell
+zvm list
 zvm list --remote
-zvm list --installed
 ```
 
 ### install
