@@ -13,6 +13,9 @@ readonly bin_dir="$HOME/.local/bin"
 readonly bin_name="zig"
 readonly self_name=$(basename $0)
 
+ZVM_HOME=${ZVM_HOME:-$install_dir}
+ZVM_BIN=${ZVM_BIN:-$bin_dir}
+
 ## Options
 o_installed=0
 o_remote=0
@@ -37,6 +40,13 @@ Commands:
 
   uninstall <version>  Uninstall a Zig version
   help                 Show this help page
+
+Environment:
+  ZVM_HOME  Path where zvm downloads and extracts zig releases
+              Default: \$HOME/.local/share/zvm/
+
+  ZVM_BIN   Path where zvm symlinks zig binaries
+              Default: \$HOME/.local/bin/
 
 usage_text
 }
@@ -81,7 +91,7 @@ cmd_list() {
         return $NOERR
     fi
 
-    versions="$(fd --maxdepth 1 . $install_dir -x basename)"
+    versions="$(fd --maxdepth 1 . $ZVM_HOME -x basename 2> /dev/null)"
     echo "${versions}"
 }
 
@@ -147,14 +157,14 @@ cmd_uninstall() {
 
     vrb "uninstalling '$1'"
 
-    found=$(ls "$install_dir/$1" > /dev/null 2>&1)
+    found=$(ls "$ZVM_HOME/$1" > /dev/null 2>&1)
 
     if [ $? -ne 0 ]; then
         err "version '$1' is not installed"
         return $CMDERR
     fi
 
-    rm -r "$install_dir/$1" > /dev/null 2>&1
+    rm -r "$ZVM_HOME/$1" > /dev/null 2>&1
     if [ $? -ne $NOERR ]; then
         err "failed uninstalling '$1'"
         return $CMDERR
@@ -166,7 +176,7 @@ cmd_uninstall() {
 # use - Use an installed version
 #   <version> Version to use
 cmd_use() {
-    found=$(ls "$install_dir/$1" > /dev/null 2>&1)
+    found=$(ls "$ZVM_HOME/$1" > /dev/null 2>&1)
 
     if [ $? -ne 0 ]; then
         err "version '$1' was not installed; install it with '$self_name install $1'"
@@ -271,14 +281,14 @@ release_download() {
     release_version=$(basename $filename .tar.xz)
     release_version=${release_version#"$bin_name-$os-$arch-"}
 
-    if [ -d "$install_dir/$1/$(basename $filename .tar.xz)" ]; then
+    if [ -d "$ZVM_HOME/$1/$(basename $filename .tar.xz)" ]; then
         echo "version '$1' is already installed ($release_version)"
         exit $NOERR
     fi
 
     vrb "downloading '$1': $release_url"
 
-    curl_response=$(curl -s --create-dirs --output "$install_dir/$1/$filename" \
+    curl_response=$(curl -s --create-dirs --output "$ZVM_HOME/$1/$filename" \
         "$release_url" 2>&1)
 
     if [ $? -ne $NOERR ]; then
@@ -294,7 +304,7 @@ release_download() {
 #   $1  Release name
 #   $2  Release JSON object
 release_extract() {
-    tarball=$(fd -t f -e xz . "$install_dir/$1")
+    tarball=$(fd -t f -e xz . "$ZVM_HOME/$1")
 
     vrb "extracting tarball: $tarball"
 
@@ -309,14 +319,14 @@ release_extract() {
     vrb "successfully extracted tarball"
 }
 
-# Install to $bin_dir via symlink
+# Install to $ZVM_BIN via symlink
 #   $1  Release name
 #   $2  Release JSON object
 release_install() {
     release_version="$1"
     if [ "$1" == "master" ]; then
         if [ -z "$2" ]; then
-            release_version=$(fd --maxdepth 1 -t d . "$install_dir/$1" -x basename)
+            release_version=$(fd --maxdepth 1 -t d . "$ZVM_HOME/$1" -x basename)
             release_version=${release_version#"$bin_name-$os-$arch-"}
         else
             release_version=$(jq -r ".version" <<< "$2")
@@ -325,7 +335,7 @@ release_install() {
 
     vrb "installing '$1': $release_version"
 
-    ln_output=$(ln -sf "$install_dir/$1/$bin_name-$os-$arch-$release_version/$bin_name" "$bin_dir/$bin_name" 2>&1)
+    ln_output=$(ln -sf "$ZVM_HOME/$1/$bin_name-$os-$arch-$release_version/$bin_name" "$ZVM_BIN/$bin_name" 2>&1)
 
     if [ $? -ne $NOERR ]; then
         err "failed installing release"
@@ -335,5 +345,10 @@ release_install() {
 
     vrb "successfully installed release"
 }
+
+if [ "$(basename $ZVM_HOME)" != "zvm" ]; then
+    die "'ZVM_HOME' is invalid (must be named 'zvm')"
+    exit 1
+fi
 
 ensure_required_progs && args_parse_strict $@

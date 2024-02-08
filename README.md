@@ -46,8 +46,25 @@ Uninstall a zig version.
 zvm uninstall 0.10.0
 ```
 
+### help
+
+Show zvm help.
+
+```shell
+zvm help
+```
+
+## Customizing
+
+### Environment
+
+- `ZVM_HOME` - zvm home directory (where zvm downloads and extracts zig tarballs)
+- `ZVM_BIN` - zvm bin directory (where zvm links zig binaries)
+
 ## TODO
 
-- [ ] Allow custom download location (default: `$HOME/.local/share/zvm`)
-- [ ] Allow custom install prefix (default: `$HOME/.local/bin/zig`)
 - [ ] Support building from source?
+- [x] Allow custom download location (default: `$HOME/.local/share/zvm`)
+    - 9b1afd4
+- [x] Allow custom install prefix (default: `$HOME/.local/bin/zig`)
+    - 9b1afd4
