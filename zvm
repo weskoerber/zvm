@@ -75,7 +75,7 @@ cmd_list() {
 cmd_install() {
     args_parse $@ > /dev/null
 
-    vrb "attempting to lookup version '$1'"
+    vrb "fetching '$1' from index: $url"
 
     if [ -z "$1" ]; then
         err "no version provided; see available versions with '$self_name list --remote'"
@@ -86,6 +86,7 @@ cmd_install() {
     found=0
     for version in $(index_list_versions "$index"); do
         if [ "$version" == "$1" ]; then
+            vrb "found '$1' in index"
             found=1
             break;
         fi
@@ -96,10 +97,12 @@ cmd_install() {
         return $CMDERR
     fi
 
+    vrb "parsing release object from index"
+
     release=$(jq ".\"$version\"" <<< "$index")
 
     if [ -z "$release" ]; then
-        err "failed fetching '$1' from index"
+        err "failed parsing release '$version' from index"
         return $CMDERR
     fi
 
@@ -201,7 +204,15 @@ args_parse_strict() {
 
 index_fetch() {
     vrb "fetching index from ${url}"
-    echo $(curl -s "${url}")
+    curl_output=$(curl -s "${url}")
+
+    if [ $? -ne $NOERR ]; then
+        err "failed fetching index"
+        err "curl: $curl_output"
+    else
+        vrb "successfully fetched index"
+        echo $curl_output
+    fi
 }
 
 index_list_versions() {
@@ -215,8 +226,6 @@ release_download() {
     release_url=$(jq -r ".\"$arch-$os\".tarball" <<< "$2")
     filename="$(basename $release_url)"
 
-    vrb "filename: $filename"
-
     release_version=$(basename $filename .tar.xz)
     release_version=${release_version#"$bin_name-$os-$arch-"}
 
@@ -225,16 +234,18 @@ release_download() {
         exit $NOERR
     fi
 
-    vrb "release url: $release_url"
+    vrb "downloading '$1': $release_url"
 
     curl_response=$(curl -s --create-dirs --output "$install_dir/$1/$filename" \
         "$release_url" 2>&1)
 
     if [ $? -ne $NOERR ]; then
-        err "failed downloading tarball"
+        err "failed downloading release"
         err "curl: $curl_response"
         return $CMDERR
     fi
+
+    vrb "successfully downloaded release"
 }
 
 # Extract a downloaded release tarball
@@ -243,7 +254,7 @@ release_download() {
 release_extract() {
     tarball=$(fd -t f -e xz . "$install_dir/$1")
 
-    vrb "tarball: $tarball"
+    vrb "extracting tarball: $tarball"
 
     tar_output=$(tar -xf $tarball -C $(dirname $tarball) 2>&1)
 
@@ -252,6 +263,8 @@ release_extract() {
         err "tar: $tar_output"
         return $CMDERR
     fi
+
+    vrb "successfully extracted tarball"
 }
 
 # Install to $bin_dir via symlink
@@ -268,6 +281,8 @@ release_install() {
         fi
     fi
 
+    vrb "installing '$1': $release_version"
+
     ln_output=$(ln -sf "$install_dir/$1/$bin_name-$os-$arch-$release_version/$bin_name" "$bin_dir/$bin_name" 2>&1)
 
     if [ $? -ne $NOERR ]; then
@@ -275,6 +290,8 @@ release_install() {
         err "ln: $ln_output"
         return $CMDERR
     fi
+
+    vrb "successfully installed release"
 }
 
 ensure_required_progs && args_parse_strict $@
