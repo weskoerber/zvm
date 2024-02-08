@@ -38,6 +38,14 @@ Use an installed zig version.
 zvm use 0.11.0
 ```
 
+### uninstall
+
+Uninstall a zig version.
+
+```shell
+zvm uninstall 0.10.0
+```
+
 ## TODO
 
 - [ ] Allow custom download location (default: `$HOME/.local/share/zvm`)
