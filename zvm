@@ -17,7 +17,6 @@ ZVM_HOME=${ZVM_HOME:-$install_dir}
 ZVM_BIN=${ZVM_BIN:-$bin_dir}
 
 ## Options
-o_installed=0
 o_remote=0
 o_verbose=0
 
@@ -218,10 +217,6 @@ args_parse() {
                 ;;
 
             # Parse options
-            --installed)
-                o_installed=1
-                shift
-                ;;
             --remote)
                 o_remote=1
                 shift
