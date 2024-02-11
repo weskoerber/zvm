@@ -304,7 +304,7 @@ release_download() {
 #   $1  Release name
 #   $2  Release JSON object
 release_extract() {
-    tarball=$(fd -t f -e xz . "$ZVM_HOME/$1")
+    tarball=$(fd -t f -e xz . "$ZVM_HOME/$1" | sort -r | head -n 1)
 
     vrb "extracting tarball: $tarball"
 
