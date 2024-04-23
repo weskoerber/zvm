@@ -4,17 +4,18 @@ readonly NOERR=0
 readonly ARGERR=1
 readonly CMDERR=2
 
-readonly url="https://ziglang.org/download/index.json"
-readonly required_progs="jq,curl"
 readonly install_dir="$HOME/.local/share/zvm"
-readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
-readonly arch="$(uname -m)"
 readonly bin_dir="$HOME/.local/bin"
-readonly bin_name="zig"
-readonly self_name=$(basename $0)
 
 ZVM_HOME=${ZVM_HOME:-$install_dir}
 ZVM_BIN=${ZVM_BIN:-$bin_dir}
+
+readonly url="https://ziglang.org/download/index.json"
+readonly required_progs="jq,curl"
+readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
+readonly arch="$(uname -m)"
+readonly bin_name="zig"
+readonly self_name=$(basename $0)
 
 ## Options
 o_remote=0
