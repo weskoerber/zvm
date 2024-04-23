@@ -16,6 +16,7 @@ readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
 readonly arch="$(uname -m)"
 readonly bin_name="zig"
 readonly self_name=$(basename $0)
+readonly versions_file="${ZVM_HOME}/versions.json"
 
 ## Options
 o_remote=0
@@ -73,6 +74,16 @@ ensure_required_progs() {
             panic_missing_prog $prog
         done
     )
+}
+
+ensure_versions_file() {
+    if ! [ -a "$versions_file" ]; then
+        echo '{}' | jq > $versions_file
+    else
+        if ! [ -f "$versions_file" ]; then
+            die "Version manifest file is not a regular file"
+        fi
+    fi
 }
 
 ### Command functions
@@ -327,6 +338,13 @@ release_install() {
         else
             release_version=$(jq -r ".version" <<< "$2")
         fi
+        data=$(cat $versions_file | jq ".master += {\"$release_version\": {}}")
+        vrb "updating versions file"
+        echo "$data" > $versions_file
+    else
+        data=$(cat $versions_file | jq ".\"$1\" += {}")
+        vrb "updating versions file"
+        echo "$data" > $versions_file
     fi
 
     vrb "installing '$1': $release_version"
@@ -347,4 +365,6 @@ if [ "$(basename $ZVM_HOME)" != "zvm" ]; then
     exit 1
 fi
 
-ensure_required_progs && args_parse_strict $@
+ensure_required_progs &&
+    ensure_versions_file &&
+    args_parse_strict $@
