@@ -368,7 +368,7 @@ cmd_uninstall() {
 
 # Print usage and exit
 usage() {
-    cat <<usage_text
+    cat >&2 <<usage_text
 $self_name - Zig Version Manager
 
 Usage: zvm [OPTIONS] [command] [...]
