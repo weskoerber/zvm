@@ -1,9 +1,5 @@
 #!/bin/sh
 
-readonly NOERR=0
-readonly ARGERR=1
-readonly CMDERR=2
-
 readonly install_dir="$HOME/.local/share/zvm"
 readonly bin_dir="$HOME/.local/bin"
 
@@ -14,46 +10,23 @@ readonly url="https://ziglang.org/download/index.json"
 readonly required_progs="jq,curl"
 readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
 readonly arch="$(uname -m)"
+readonly target="${arch}-${os}"
 readonly bin_name="zig"
 readonly self_name=$(basename $0)
 readonly versions_file="${ZVM_HOME}/versions.json"
 
-## Options
-o_remote=0
+# Global options
 o_verbose=0
 
-usage() {
-    cat <<usage_text
-$self_name - Zig Version Manager
-
-Usage: zvm [OPTIONS] [command] [...]
-
-Options:
-  -v  Enable verbose script output
-
-Commands:
-  list [OPTIONS]       List Zig versions available in the remote index
-    --installed        List installed Zig versions
-
-  install <version>    Install a Zig version
-
-  use <version>        Use an installed Zig version
-
-  uninstall <version>  Uninstall a Zig version
-  help                 Show this help page
-
-Environment:
-  ZVM_HOME  Path where zvm downloads and extracts zig releases
-              Default: \$HOME/.local/share/zvm/
-
-  ZVM_BIN   Path where zvm symlinks zig binaries
-              Default: \$HOME/.local/bin/
-
-usage_text
-}
-
+################################################################################
+# Logging functions                                                            #
+################################################################################
 vrb() {
     [ $o_verbose -eq 1 ] && echo "vrb: ${1}" >&2
+}
+
+warn() {
+    echo "warn: ${1}" >&2
 }
 
 err() {
@@ -68,6 +41,345 @@ panic_missing_prog() {
     command -v $1 > /dev/null 2>&1 || die "'${1}' is required to run this script"
 }
 
+################################################################################
+# Index functions                                                              #
+################################################################################
+# Initialize the local index file
+index_init() {
+    mkdir -p "$ZVM_HOME"
+
+    versions=$(jq . $versions_file 2> /dev/null)
+    if ! [ -a "$versions_file" ] || [ -z "$versions" ] || [ "$versions" == 'null' ]; then
+        echo '{"releases": {}, "active": null}' | jq > $versions_file
+    else
+        if ! [ -f "$versions_file" ]; then
+            die "Version manifest file is not a regular file"
+        fi
+    fi
+}
+
+# Read the local index
+index_fetch_local() {
+    vrb "reading local index from ${versions_file}"
+
+    jq . $versions_file
+}
+
+# Read the remote index
+index_fetch_remote() {
+    vrb "fetching remote index from ${url}"
+    curl_output=$(curl -s "${url}")
+
+    if [ $? -ne 0 ]; then
+        err "failed fetching index"
+        err "curl: $curl_output"
+    else
+        vrb "successfully fetched index"
+        echo $curl_output
+    fi
+}
+
+# List versions from the local index
+index_list_local() {
+    index_fetch_local | jq -r '.releases|keys[]'
+}
+
+# List versions from the remote index
+index_list_remote() {
+    index_fetch_remote | jq -r 'keys_unsorted|.[]'
+}
+
+# Add a release to the local index
+# args:
+#   $1  Release name
+#   $2  Release JSON object
+index_add_release() {
+    _version=$1
+    _json=$2
+
+    vrb "adding release '$_version' to local index"
+
+    current=$(cat $versions_file)
+
+    jq ".releases.\"$_version\"=$_json" <<< $current > $versions_file
+}
+
+# Set release active
+# args:
+#   $1  Release name
+index_set_active() {
+    _version=$1
+
+    vrb "marking '$_version' installed"
+
+    current=$(cat $versions_file)
+    jq ".active=\"$_version\"" <<< $current > $versions_file
+}
+
+# Get the active version
+index_get_active() {
+    version=$(jq -r '.active' $versions_file)
+    if [ "$version" == 'null' ]; then
+        version=""
+    fi
+
+    echo $version
+}
+
+# Remove active version (sets active field to null, doesn't remove anything)
+index_remove_active() {
+    current=$(cat $versions_file)
+    jq ".active=null" <<< $current > $versions_file
+}
+
+# Convert the master tag to a semver by reading remote index
+index_get_master_version() {
+    vrb "fetching current master version from remote index"
+    master_version=$(index_fetch_remote | jq -r ".master.version")
+    if [ -z "$master_version" ] || [ "$master_version" == 'null' ]; then
+        err "failed retrieving master version from remote index"
+        exit 1
+    fi
+
+    echo $master_version
+}
+
+################################################################################
+# File functions                                                               #
+################################################################################
+
+# Download a file
+# args:
+#   $1  release name
+#   $2  release JSON object
+file_download() {
+    _version=$1
+    _json=$2
+
+    info=$(jq ".\"$target\"" <<< $_json)
+
+    tarball=$(jq -r '.tarball' <<< $info)
+    shasum=$(jq -r '.shasum' <<< $info)
+    size=$(jq -r '.size' <<< $info)
+
+
+    filename="$_version.tar.xz"
+    path="$ZVM_HOME/$_version/$filename"
+    dir=$(dirname $path)
+
+    mkdir -p $dir
+
+    vrb "downloading $tarball to $dir"
+
+    echo "$shasum *$path" > "$path.shasum"
+    curl_response=$(curl -s --output "$path" "$tarball" 2>&1)
+
+    vrb "verifying shasum"
+
+    shasum -sc "$path.shasum"
+    sha_result=$?
+
+    if [ $sha_result -ne 0 ]; then
+        err "shasum failed for $path"
+        exit 1
+    fi
+
+    vrb "shasum verified"
+    vrb "extracting $filename"
+
+    tar --strip-components=1 -xf $path -C $dir
+
+    vrb "cleaning up"
+
+    rm "$path"
+    rm "$path.shasum"
+}
+
+################################################################################
+# Command functions                                                            #
+################################################################################
+
+# command: list
+# args: none
+# options:
+#   -i, --installed  List versions from the local index instead of remote
+o_remote=1
+cmd_list() {
+    for arg in "$@"; do
+        case $1 in
+            -i|--installed)
+                o_remote=0
+                shift
+                ;;
+            *)
+                err "unrecognized argument: '$1'"
+                exit 1
+        esac
+    done
+
+    if [ $o_remote -eq 1 ]; then
+        index_list_remote
+    else
+        index_list_local
+    fi
+}
+
+# command: use
+# args:
+#   $1  Version name from index
+# options: none
+cmd_use() {
+    _version=$1
+
+    if [ -z "$_version" ]; then
+        err "expected 1 positional argument"
+        exit 1
+    fi
+
+    if [ "$_version" == 'master' ]; then
+        _version=$(index_get_master_version)
+    fi
+
+    installed=$(index_fetch_local | jq -r ".releases.\"$_version\"")
+    if [ "$installed" == 'null' ]; then
+        err "version '$_version' is not installed; install it with '$self_name install $_version'"
+        exit 1
+    fi
+
+    src="$ZVM_HOME/$_version/$bin_name"
+    dst="$ZVM_BIN/$bin_name"
+
+    # TODO: get the path to the dir
+    if ! [ -f "$src" ]; then
+        err "file not found: $src"
+    fi
+
+    ln -sf $src $dst
+
+    index_set_active $_version
+}
+
+# command: install
+# args:
+#   $1  Version name from index
+# options:
+#   -u, --use  Make active immediately after install
+o_use=0
+cmd_install() {
+    for arg in "$@"; do
+        case $1 in
+            -u|--use)
+                o_use=1
+                shift
+                ;;
+        esac
+    done
+
+    _version=$1
+    index_version=$_version
+
+    if [ "$_version" == 'master' ]; then
+        _version=$(index_get_master_version)
+    fi
+
+    vrb "installing '$_version'"
+
+    installed=$(index_fetch_local | jq -r ".releases.\"$_version\"")
+    if [ "$installed" != 'null' ]; then
+        err "version '$_version' is already installed; see '$self_name use $_version'"
+        exit 1
+    fi
+
+    json=$(index_fetch_remote | jq -r ".\"$index_version\"")
+    if [ "$json" == 'null' ]; then
+        err "version '$index_version' not found in remote index"
+        exit 1
+    fi
+
+    file_download $_version "$json"
+
+    if [ $? -ne 0 ]; then
+        err "failed installing $_version"
+        exit 1
+    fi
+
+    index_add_release $_version "$json"
+
+    if [ $o_use -eq 1 ]; then
+        cmd_use $_version
+    fi
+}
+
+# command: uninstall
+# args:
+#   $1: Version to uninstall
+# options: none
+cmd_uninstall() {
+    _version=$1
+
+    installed=$(jq ".releases.\"$_version\"" $versions_file)
+    if [ -z "$installed" ] || [ "$installed" == 'null' ]; then
+        err "version '$_version' is not installed"
+        exit 1
+    fi
+
+    vrb "removing files from disk"
+
+    dir="$ZVM_HOME/$_version"
+    rm -rf $dir
+
+    if [ -a "$ZVM_BIN/$bin_name" ]; then
+        unlink "$ZVM_BIN/$bin_name"
+    else
+        vrb "skipping non-existent symlink"
+    fi
+
+    vrb "removing from index"
+    json=$(jq . $versions_file)
+    jq "del(.releases.\"$_version\")" <<< $json > $versions_file
+
+    current_install=$(jq -r '.active' $versions_file)
+    if [ "$current_install" == "$_version" ]; then
+        warn "active version was uninstalled; use '$self_name use <version>' to switch to an available version"
+        index_remove_active
+    fi
+}
+
+# Print usage and exit
+usage() {
+    cat <<usage_text
+$self_name - Zig Version Manager
+
+Usage: zvm [OPTIONS] [command] [...]
+
+Options:
+  -v  Enable verbose script output
+
+Commands:
+  list [OPTIONS]               List Zig versions available in the remote index
+    -i, --installed            List installed Zig versions
+
+  install [OPTIONS] <version>  Install a Zig version
+    -u, --use                  Make version active immediately
+
+  use <version>                Use an installed Zig version
+
+  uninstall <version>          Uninstall a Zig version
+  help                         Show this help page
+
+Environment:
+  ZVM_HOME  Path where zvm downloads and extracts zig releases
+              Default: \$HOME/.local/share/zvm/
+
+  ZVM_BIN   Path where zvm symlinks zig binaries
+              Default: \$HOME/.local/bin/
+
+usage_text
+
+exit 0
+}
+
+# Ensure all required programs are installed, and panic otherwise
 ensure_required_progs() {
     (
         IFS=','; for prog in $required_progs; do
@@ -76,134 +388,35 @@ ensure_required_progs() {
     )
 }
 
-ensure_versions_file() {
-    if ! [ -a "$versions_file" ]; then
-        echo '{}' | jq > $versions_file
-    else
-        if ! [ -f "$versions_file" ]; then
-            die "Version manifest file is not a regular file"
-        fi
-    fi
-}
-
-### Command functions
-
-# list - List versions
-#   [--remote]     List versions available in remote index
-cmd_list() {
-    args_parse $@ > /dev/null
-
-    versions=""
-
-    if [ $o_remote -eq 1 ]; then
-        index=$(index_fetch)
-        versions=$(index_list_versions "${index}")
-        echo "${versions}"
-        return $NOERR
-    fi
-
-    versions="$(fd --maxdepth 1 . $ZVM_HOME -x basename 2> /dev/null)"
-    echo "${versions}"
-}
-
-# install - Install version from remote index
-#   <version>  Version to install
-cmd_install() {
-    args_parse $@ > /dev/null
-
-    vrb "fetching '$1' from index: $url"
-
-    if [ -z "$1" ]; then
-        err "no version provided; see available versions with '$self_name list --remote'"
-        return $CMDERR
-    fi
-
-    index=$(index_fetch)
-    found=0
-    for version in $(index_list_versions "$index"); do
-        if [ "$version" == "$1" ]; then
-            vrb "found '$1' in index"
-            found=1
-            break;
-        fi
+# Parse global options (options before command)
+args_parse_global() {
+    for arg in "$@"; do
+        case $1 in
+            # Parse global options
+            -h | --help | help)
+                usage
+                exit 0
+                ;;
+            -v | --verbose)
+                o_verbose=1
+                shift
+                ;;
+            *)
+                break
+                ;;
+        esac
     done
 
-    if [ $found -ne 1 ]; then
-        err "version '$1' was not found in remote index"
-        return $CMDERR
-    fi
-
-    vrb "parsing release object from index"
-
-    release=$(jq ".\"$version\"" <<< "$index")
-
-    if [ -z "$release" ]; then
-        err "failed parsing release '$version' from index"
-        return $CMDERR
-    fi
-
-    release_download "$1" "$release"
-    if [ $? -ne $NOERR ]; then
-        return $CMDERR
-    fi
-
-    release_extract "$1" "$release"
-    if [ $? -ne $NOERR ]; then
-        return $CMDERR
-    fi
-
-    release_install "$1" "$release"
-    if [ $? -ne $NOERR ]; then
-        return $CMDERR
-    fi
+    echo $@
 }
 
-# uninstall - Uninstall version
-#   <version> Version to uninstall
-cmd_uninstall() {
-    if [ -z "$1" ]; then
-        err "missing version"
-        return $CMDERR
+# Parse command and call its function
+args_parse_command() {
+    if [ $# -eq 0 ]; then
+        index_get_active
+        exit 0
     fi
 
-    vrb "uninstalling '$1'"
-
-    found=$(ls "$ZVM_HOME/$1" > /dev/null 2>&1)
-
-    if [ $? -ne 0 ]; then
-        err "version '$1' is not installed"
-        return $CMDERR
-    fi
-
-    rm -r "$ZVM_HOME/$1" > /dev/null 2>&1
-    if [ $? -ne $NOERR ]; then
-        err "failed uninstalling '$1'"
-        return $CMDERR
-    fi
-
-    vrb "successfully uninstalled '$1'"
-}
-
-# use - Use an installed version
-#   <version> Version to use
-cmd_use() {
-    found=$(ls "$ZVM_HOME/$1" > /dev/null 2>&1)
-
-    if [ $? -ne 0 ]; then
-        err "version '$1' was not installed; install it with '$self_name install $1'"
-        return $CMDERR
-    fi
-
-    release_install "$1"
-    if [ $? -ne $NOERR ]; then
-        return $CMDERR
-    fi
-}
-
-# Return:
-#   1  unrecognized argument
-#   2  command error
-args_parse() {
     for arg in "$@"; do
         case $1 in
             # Parse commands
@@ -227,144 +440,26 @@ args_parse() {
                 cmd_use $@
                 exit $?
                 ;;
-
-            # Parse options
-            --remote)
-                o_remote=1
-                shift
-                ;;
-            -h | --help | help)
-                usage
-                exit 0
-                ;;
-            -v | --verbose)
-                o_verbose=1
-                shift
-                ;;
             *)
-                echo "unrecognized argument '$1'"
-                return $ARGERR
+                echo "unrecognized command '$1'"
                 ;;
         esac
     done
 }
 
-args_parse_strict() {
-    msg=$(args_parse $@)
-
-    if [ $? -eq $ARGERR ]; then
-        die "$msg"
-    fi
-
-    if [ -n "$msg" ]; then
-        echo "${msg}"
-    fi
-}
-
-index_fetch() {
-    vrb "fetching index from ${url}"
-    curl_output=$(curl -s "${url}")
-
-    if [ $? -ne $NOERR ]; then
-        err "failed fetching index"
-        err "curl: $curl_output"
-    else
-        vrb "successfully fetched index"
-        echo $curl_output
-    fi
-}
-
-index_list_versions() {
-    jq -r 'keys_unsorted | .[]' <<< $1
-}
-
-# Download a release from the remote index
-#   $1  Release name
-#   $2  Release JSON object
-release_download() {
-    release_url=$(jq -r ".\"$arch-$os\".tarball" <<< "$2")
-    filename="$(basename $release_url)"
-
-    release_version=$(basename $filename .tar.xz)
-    release_version=${release_version#"$bin_name-$os-$arch-"}
-
-    if [ -d "$ZVM_HOME/$1/$(basename $filename .tar.xz)" ]; then
-        echo "version '$1' is already installed ($release_version)"
-        exit $NOERR
-    fi
-
-    vrb "downloading '$1': $release_url"
-
-    curl_response=$(curl -s --create-dirs --output "$ZVM_HOME/$1/$filename" \
-        "$release_url" 2>&1)
-
-    if [ $? -ne $NOERR ]; then
-        err "failed downloading release"
-        err "curl: $curl_response"
-        return $CMDERR
-    fi
-
-    vrb "successfully downloaded release"
-}
-
-# Extract a downloaded release tarball
-#   $1  Release name
-#   $2  Release JSON object
-release_extract() {
-    tarball=$(fd -t f -e xz . "$ZVM_HOME/$1" | sort -r | head -n 1)
-
-    vrb "extracting tarball: $tarball"
-
-    tar_output=$(tar -xf $tarball -C $(dirname $tarball) 2>&1)
-
-    if [ $? -ne $NOERR ]; then
-        err "failed extracting tarball"
-        err "tar: $tar_output"
-        return $CMDERR
-    fi
-
-    vrb "successfully extracted tarball"
-}
-
-# Install to $ZVM_BIN via symlink
-#   $1  Release name
-#   $2  Release JSON object
-release_install() {
-    release_version="$1"
-    if [ "$1" == "master" ]; then
-        if [ -z "$2" ]; then
-            release_version=$(fd --maxdepth 1 -t d . "$ZVM_HOME/$1" -x basename)
-            release_version=${release_version#"$bin_name-$os-$arch-"}
-        else
-            release_version=$(jq -r ".version" <<< "$2")
-        fi
-        data=$(cat $versions_file | jq ".master += {\"$release_version\": {}}")
-        vrb "updating versions file"
-        echo "$data" > $versions_file
-    else
-        data=$(cat $versions_file | jq ".\"$1\" += {}")
-        vrb "updating versions file"
-        echo "$data" > $versions_file
-    fi
-
-    vrb "installing '$1': $release_version"
-
-    ln_output=$(ln -sf "$ZVM_HOME/$1/$bin_name-$os-$arch-$release_version/$bin_name" "$ZVM_BIN/$bin_name" 2>&1)
-
-    if [ $? -ne $NOERR ]; then
-        err "failed installing release"
-        err "ln: $ln_output"
-        return $CMDERR
-    fi
-
-    vrb "successfully installed release"
-}
+################################################################################
+# Script start                                                                 #
+################################################################################
 
 if [ "$(basename $ZVM_HOME)" != "zvm" ]; then
     die "'ZVM_HOME' is invalid (must be named 'zvm')"
     exit 1
 fi
 
-ensure_required_progs &&
-    ensure_versions_file &&
-    args_parse_strict $@
+ensure_required_progs
+index_init
+
+# TODO(cleanup): have to call args_parse_global twice: first to set global
+# options, then to get command without global options
+args_parse_global $@ > /dev/null
+args_parse_command $(args_parse_global $@)
