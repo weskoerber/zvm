@@ -310,6 +310,27 @@ cmd_install() {
     fi
 }
 
+# command: prune
+# args: none
+# options: none
+cmd_prune() {
+    active=$(jq -r '.active' $versions_file)
+    installed=$(index_list_local)
+
+    vrb "pruning unused versions"
+
+    for version in $installed; do
+        if [ "$active" == "$version" ];then
+            vrb "skipping active version '$active'"
+            continue
+        fi
+
+        vrb "uninstalling '$version'"
+
+        cmd_uninstall $version
+    done
+}
+
 # command: uninstall
 # args:
 #   $1: Version to uninstall
@@ -365,6 +386,7 @@ Commands:
   use <version>                Use an installed Zig version
 
   uninstall <version>          Uninstall a Zig version
+  prune                        Uninstall all but the currently active version
   help                         Show this help page
 
 Environment:
@@ -428,6 +450,11 @@ args_parse_command() {
             install)
                 shift
                 cmd_install $@
+                exit $?
+                ;;
+            prune)
+                shift
+                cmd_prune $@
                 exit $?
                 ;;
             uninstall)
