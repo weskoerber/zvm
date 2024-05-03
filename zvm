@@ -389,6 +389,12 @@ Commands:
   prune                        Uninstall all but the currently active version
   help                         Show this help page
 
+Aliases:
+  list: ls
+  install: i
+  uninstall: rm
+  help: h
+
 Environment:
   ZVM_HOME  Path where zvm downloads and extracts zig releases
               Default: \$HOME/.local/share/zvm/
@@ -415,7 +421,7 @@ args_parse_global() {
     for arg in "$@"; do
         case $1 in
             # Parse global options
-            -h | --help | help)
+            -h | --help | h | help)
                 usage
                 exit 0
                 ;;
@@ -442,12 +448,12 @@ args_parse_command() {
     for arg in "$@"; do
         case $1 in
             # Parse commands
-            list)
+            ls|list)
                 shift
                 cmd_list $@
                 exit $?
                 ;;
-            install)
+            i|install)
                 shift
                 cmd_install $@
                 exit $?
@@ -457,7 +463,7 @@ args_parse_command() {
                 cmd_prune $@
                 exit $?
                 ;;
-            uninstall)
+            rm|uninstall)
                 shift
                 cmd_uninstall $@
                 exit $?
