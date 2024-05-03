@@ -18,6 +18,8 @@ exit. Specific actions may be performed my providing a command.
 
 ### list
 
+Alias: `ls`
+
 List Zig versions from the remote index:
 ```shell
 zvm list
@@ -30,6 +32,8 @@ zvm list --installed
 ```
 
 ### install
+
+Alias: `i`
 
 Install a Zig version:
 ```shell
@@ -51,12 +55,16 @@ zvm use 0.12.0
 
 ### uninstall
 
+Alias: `rm`
+
 Uninstall a Zig version:
 ```shell
 zvm uninstall 0.11.0
 ```
 
 ### help
+
+Alias: `h`
 
 Show `zvm` help:
 ```shell
