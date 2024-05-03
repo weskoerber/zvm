@@ -13,6 +13,7 @@ readonly arch="$(uname -m)"
 readonly target="${arch}-${os}"
 readonly bin_name="zig"
 readonly self_name=$(basename $0)
+readonly self_version="0.1.0"
 readonly versions_file="${ZVM_HOME}/versions.json"
 
 # Global options
@@ -374,7 +375,8 @@ $self_name - Zig Version Manager
 Usage: zvm [OPTIONS] [command] [...]
 
 Options:
-  -v  Enable verbose script output
+  -v         Enable verbose script output
+  --version  Print the version and exit
 
 Commands:
   list [OPTIONS]               List Zig versions available in the remote index
@@ -428,6 +430,10 @@ args_parse_global() {
             -v | --verbose)
                 o_verbose=1
                 shift
+                ;;
+            --version)
+                echo "$self_version" >&2
+                exit 0
                 ;;
             *)
                 break
