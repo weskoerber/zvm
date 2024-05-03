@@ -1,6 +1,6 @@
 # zvm - Zig Version Manager
 
-A script to manage your [zig](https://ziglang.org) versions.
+A script to manage your [Zig](https://Ziglang.org) versions.
 
 ## Getting Started
 
@@ -11,45 +11,54 @@ A script to manage your [zig](https://ziglang.org) versions.
 
 ### Usage
 
+Without any commands, `zvm` will print the currently active Zig version and
+exit. Specific actions may be performed my providing a command.
+
 ## Commands
 
 ### list
 
-List zig versions.
-
+List Zig versions from the remote index:
 ```shell
 zvm list
-zvm list --remote
+```
+
+List installed Zig versions:
+```shell
+zvm list -i
+zvm list --installed
 ```
 
 ### install
 
-Install a zig version.
-
+Install a Zig version:
 ```shell
-zvm install 0.11.0
+zvm install 0.12.0
+```
+
+Install a Zig version and make it active immediately:
+```shell
+zvm install -u 0.12.0
+zvm install --use 0.12.0
 ```
 
 ### use
 
-Use an installed zig version.
-
+Use an installed Zig version:
 ```shell
-zvm use 0.11.0
+zvm use 0.12.0
 ```
 
 ### uninstall
 
-Uninstall a zig version.
-
+Uninstall a Zig version:
 ```shell
-zvm uninstall 0.10.0
+zvm uninstall 0.11.0
 ```
 
 ### help
 
-Show zvm help.
-
+Show `zvm` help:
 ```shell
 zvm help
 ```
@@ -58,8 +67,8 @@ zvm help
 
 ### Environment
 
-- `ZVM_HOME` - zvm home directory (where zvm downloads and extracts zig tarballs)
-- `ZVM_BIN` - zvm bin directory (where zvm links zig binaries)
+- `ZVM_HOME` - `zvm` home directory (where `zvm` downloads and extracts Zig tarballs)
+- `ZVM_BIN` - `zvm` bin directory (where `zvm` links Zig binaries)
 
 ## TODO
 
