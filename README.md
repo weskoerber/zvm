@@ -16,7 +16,7 @@ exit. Specific actions may be performed my providing a command.
 
 ## Commands
 
-### list
+### `list`
 
 Alias: `ls`
 
@@ -31,7 +31,7 @@ zvm list -i
 zvm list --installed
 ```
 
-### install
+### `install`
 
 Alias: `i`
 
@@ -46,14 +46,14 @@ zvm install -u 0.12.0
 zvm install --use 0.12.0
 ```
 
-### use
+### `use`
 
 Use an installed Zig version:
 ```shell
 zvm use 0.12.0
 ```
 
-### uninstall
+### `uninstall`
 
 Alias: `rm`
 
@@ -62,7 +62,7 @@ Uninstall a Zig version:
 zvm uninstall 0.11.0
 ```
 
-### help
+### `help`
 
 Alias: `h`
 
