@@ -214,7 +214,9 @@ file_download() {
     if [ "$extension" = '.tar.xz' ]; then
         tar --strip-components=1 -xf "$path" -C "$dir"
     elif [ "$extension" = '.zip' ]; then
-        unzip "$path" "*/*" -d "$dir"
+        unzip -q "$path" -d "$dir"
+        mv $dir/zig-*/* "$dir"
+        rm -r $dir/zig-*
     fi
 
     vrb "cleaning up"
