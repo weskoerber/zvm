@@ -487,6 +487,9 @@ args_parse_command() {
 # Script start                                                                 #
 ################################################################################
 
+if ! [ -d "$ZVM_HOME" ] && mkdir -p "$ZVM_HOME" > /dev/null
+if ! [ -d "$ZVM_BIN" ] && mkdir -p "$ZVM_HOME" > /dev/null
+
 if [ "$(basename "$ZVM_HOME")" != "zvm" ]; then
     die "'ZVM_HOME' is invalid (must be named 'zvm')"
     exit 1
