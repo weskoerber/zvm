@@ -114,7 +114,7 @@ index_set_active() {
     vrb "marking '$_version' installed"
 
     current=$(cat $versions_file)
-    jq ".active=\"$_version\"" <<< $current > $versions_file
+    echo "$current" | jq ".active=\"$_version\"" "$versions_file"
 }
 
 # Get the active version
@@ -130,7 +130,7 @@ index_get_active() {
 # Remove active version (sets active field to null, doesn't remove anything)
 index_remove_active() {
     current=$(cat $versions_file)
-    jq ".active=null" <<< $current > $versions_file
+    echo "$current" | jq ".active=null" > "$versions_file"
 }
 
 # Convert the master tag to a semver by reading remote index
@@ -157,11 +157,11 @@ file_download() {
     _version=$1
     _json=$2
 
-    info=$(jq ".\"$target\"" <<< $_json)
+    info=$(echo "$_json" | jq ".\"$target\"")
 
-    tarball=$(jq -r '.tarball' <<< $info)
-    shasum=$(jq -r '.shasum' <<< $info)
-    size=$(jq -r '.size' <<< $info)
+    tarball=$(echo "$info" | jq -r '.tarball')
+    shasum=$(echo "$info" | jq -r '.shasum')
+    size=$(echo "$info" | jq -r '.size')
 
 
     filename="$_version.tar.xz"
@@ -358,7 +358,7 @@ cmd_uninstall() {
 
     vrb "removing from index"
     json=$(jq . $versions_file)
-    jq "del(.releases.\"$_version\")" <<< $json > $versions_file
+    echo "$json" | jq "del(.releases.\"$_version\")" > "$versions_file"
 
     current_install=$(jq -r '.active' $versions_file)
     if [ "$current_install" == "$_version" ]; then
