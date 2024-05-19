@@ -8,9 +8,10 @@ ZVM_BIN=${ZVM_BIN:-$bin_dir}
 
 readonly url="https://ziglang.org/download/index.json"
 readonly required_progs="jq,curl"
+readonly supported_extensions=".tar.xz"
 readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
 readonly arch="$(uname -m)"
-readonly target="${arch}-${os}"
+readonly native_target="${arch}-${os}"
 readonly bin_name="zig"
 readonly self_name="$(basename "$0")"
 readonly self_version="0.1.0"
@@ -19,6 +20,7 @@ readonly versions_file="${ZVM_HOME}/versions.json"
 # Global options
 o_verbose=0
 o_extra_verbose=0
+o_target="$native_target"
 
 ################################################################################
 # Logging functions                                                            #
@@ -162,23 +164,36 @@ file_download() {
     _version=$1
     _json=$2
 
-    info=$(echo "$_json" | jq ".\"$target\"")
+    info=$(echo "$_json" | jq ".\"$o_target\"")
 
     if [ "$info" = 'null' ]; then
-        die "target '$target' not supported"
+        die "target '$o_target' not supported"
     fi
 
     tarball=$(echo "$info" | jq -r '.tarball')
+
+    extension=''
+    case "$tarball" in
+        *.tar.xz)
+            extension='.tar.xz'
+            ;;
+        *.zip)
+            extension='.zip'
+            ;;
+        *)
+            die "unsupported extension '$extension'"
+            ;;
+    esac
+
     shasum=$(echo "$info" | jq -r '.shasum')
 
-
-    filename="$_version.tar.xz"
+    filename="${_version}.${extension}"
     path="$ZVM_HOME/$_version/$filename"
     dir=$(dirname "$path")
 
     mkdir -p "$dir"
 
-    vrb "downloading $tarball to $dir"
+    vrb "downloading $tarball ($extension) to $dir"
 
     echo "$shasum *$path" > "$path.shasum"
     curl -s --output "$path" "$tarball" > /dev/null 2>&1
@@ -196,7 +211,11 @@ file_download() {
     vrb "shasum verified"
     vrb "extracting $filename"
 
-    tar --strip-components=1 -xf "$path" -C "$dir"
+    if [ "$extension" = '.tar.xz' ]; then
+        tar --strip-components=1 -xf "$path" -C "$dir"
+    elif [ "$extension" = '.zip' ]; then
+        unzip "$path" "*/*" -d "$dir"
+    fi
 
     vrb "cleaning up"
 
@@ -433,6 +452,11 @@ args_parse_global() {
                 usage
                 exit 0
                 ;;
+            -t | --target)
+                shift
+                o_target="$1"
+                shift
+                ;;
             -vv)
                 o_extra_verbose=1
                 o_verbose=1
@@ -521,6 +545,7 @@ args_parse_global $@ > /dev/null
 vrb2 "zvm version: $self_version"
 vrb2 "ZVM_HOME: $ZVM_HOME"
 vrb2 "ZVM_BIN: $ZVM_BIN"
-vrb2 "target OS: $target"
+vrb2 "native_target: $native_target"
+vrb2 "target: $o_target"
 
 args_parse_command $(args_parse_global $@)
