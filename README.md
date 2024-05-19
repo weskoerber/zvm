@@ -6,8 +6,11 @@ A script to manage your [Zig](https://Ziglang.org) versions.
 
 ### Prerequisites
 
-- [`jq`](https://jqlang.github.io/jq/)
-- [`curl`](https://curl.se/download.html)
+- A POSIX-compliant shell
+- [curl](https://curl.se/download.html)
+- [jq](https://jqlang.github.io/jq/)
+- tar
+- unzip
 
 ### Usage
 

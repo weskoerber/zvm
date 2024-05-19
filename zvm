@@ -7,7 +7,7 @@ ZVM_HOME=${ZVM_HOME:-$install_dir}
 ZVM_BIN=${ZVM_BIN:-$bin_dir}
 
 readonly url="https://ziglang.org/download/index.json"
-readonly required_progs="jq,curl"
+readonly required_progs="curl,jq,tar,unzip"
 readonly supported_extensions=".tar.xz"
 readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
 readonly arch="$(uname -m)"
@@ -402,8 +402,10 @@ $self_name - Zig Version Manager
 Usage: zvm [OPTIONS] [command] [...]
 
 Options:
-  -v         Enable verbose script output
-  --version  Print the version and exit
+  -t, --target  Specify a custom target to use
+  -v            Enable verbose script output
+  -vv           Enable even more verbose output
+  --version     Print the version and exit
 
 Commands:
   list [OPTIONS]               List Zig versions available in the remote index
