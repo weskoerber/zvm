@@ -109,7 +109,7 @@ index_add_release() {
 
     current=$(cat "$versions_file")
 
-    echo "$current" | jq ".releases.\"$_version\"=$_json" > "$versions_file"
+    echo "$current" | jq --argjson r "$_json" ".releases.\"$_version\"=\$r" > "$versions_file"
 }
 
 # Set release active
