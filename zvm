@@ -187,7 +187,7 @@ file_download() {
 
     shasum=$(echo "$info" | jq -r '.shasum')
 
-    filename="${_version}.${extension}"
+    filename="${_version}${extension}"
     path="$ZVM_HOME/$_version/$filename"
     dir=$(dirname "$path")
 
