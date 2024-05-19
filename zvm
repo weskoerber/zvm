@@ -18,12 +18,17 @@ readonly versions_file="${ZVM_HOME}/versions.json"
 
 # Global options
 o_verbose=0
+o_extra_verbose=0
 
 ################################################################################
 # Logging functions                                                            #
 ################################################################################
 vrb() {
     [ $o_verbose -eq 1 ] && echo "vrb: ${1}" >&2
+}
+
+vrb2() {
+    [ $o_extra_verbose -eq 1 ] && echo "vrb ${1}" >&2
 }
 
 warn() {
@@ -424,6 +429,10 @@ args_parse_global() {
                 usage
                 exit 0
                 ;;
+            -vv)
+                o_extra_verbose=1
+                shift
+                ;;
             -v | --verbose)
                 o_verbose=1
                 shift
@@ -501,4 +510,12 @@ index_init
 # TODO(cleanup): have to call args_parse_global twice: first to set global
 # options, then to get command without global options
 args_parse_global $@ > /dev/null
+
+# TODO: clean this up... we don't know which options, if any, are provided
+# before this line
+vrb2 "zvm version: $self_version"
+vrb2 "ZVM_HOME: $ZVM_HOME"
+vrb2 "ZVM_BIN: $ZVM_BIN"
+vrb2 "target OS: $target"
+
 args_parse_command $(args_parse_global $@)
