@@ -40,7 +40,7 @@ err() {
 }
 
 die() {
-    err "${1}" && exit 1
+    echo "fatal: ${1}" >&2 && exit 1
 }
 
 panic_missing_prog() {
@@ -163,6 +163,10 @@ file_download() {
     _json=$2
 
     info=$(echo "$_json" | jq ".\"$target\"")
+
+    if [ "$info" = 'null' ]; then
+        die "target '$target' not supported"
+    fi
 
     tarball=$(echo "$info" | jq -r '.tarball')
     shasum=$(echo "$info" | jq -r '.shasum')
