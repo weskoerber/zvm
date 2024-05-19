@@ -39,7 +39,7 @@ die() {
 }
 
 panic_missing_prog() {
-    command -v $1 > /dev/null 2>&1 || die "'${1}' is required to run this script"
+    command -v "$1" > /dev/null 2>&1 || die "'${1}' is required to run this script"
 }
 
 ################################################################################
@@ -49,8 +49,8 @@ panic_missing_prog() {
 index_init() {
     mkdir -p "$ZVM_HOME"
 
-    versions=$(jq . $versions_file 2> /dev/null)
-    if ! [ -a "${versions_file}" ] || [ -z "${versions}" ] || [ "${versions}" == 'null' ]; then
+    versions=$(jq . "$versions_file" 2> /dev/null)
+    if ! [ -e "${versions_file}" ] || [ -z "${versions}" ] || [ "${versions}" == 'null' ]; then
         echo '{"releases": {}, "active": null}' | jq > "$versions_file"
     else
         if ! [ -f "$versions_file" ]; then
