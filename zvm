@@ -50,8 +50,8 @@ index_init() {
     mkdir -p "$ZVM_HOME"
 
     versions=$(jq . $versions_file 2> /dev/null)
-    if ! [ -a "$versions_file" ] || [ -z "$versions" ] || [ "$versions" == 'null' ]; then
-        echo '{"releases": {}, "active": null}' | jq > $versions_file
+    if ! [ -a "${versions_file}" ] || [ -z "${versions}" ] || [ "${versions}" == 'null' ]; then
+        echo '{"releases": {}, "active": null}' | jq > "$versions_file"
     else
         if ! [ -f "$versions_file" ]; then
             die "Version manifest file is not a regular file"
@@ -279,7 +279,7 @@ cmd_install() {
     _version=$1
     index_version=$_version
 
-    if [ "$_version" == 'master' ]; then
+    if [ "${_version}" == 'master' ]; then
         _version=$(index_get_master_version)
     fi
 
@@ -292,7 +292,7 @@ cmd_install() {
     fi
 
     json=$(index_fetch_remote | jq -r ".\"$index_version\"")
-    if [ "$json" == 'null' ]; then
+    if [ "${json}" == 'null' ]; then
         err "version '$index_version' not found in remote index"
         exit 1
     fi
