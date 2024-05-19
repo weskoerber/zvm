@@ -50,7 +50,7 @@ index_init() {
     mkdir -p "$ZVM_HOME"
 
     versions=$(jq . "$versions_file" 2> /dev/null)
-    if ! [ -e "${versions_file}" ] || [ -z "${versions}" ] || [ "${versions}" == 'null' ]; then
+    if ! [ -e "${versions_file}" ] || [ -z "${versions}" ] || [ "${versions}" = 'null' ]; then
         echo '{"releases": {}, "active": null}' | jq > "$versions_file"
     else
         if ! [ -f "$versions_file" ]; then
@@ -120,7 +120,7 @@ index_set_active() {
 # Get the active version
 index_get_active() {
     version=$(jq -r '.active' $versions_file)
-    if [ "$version" == 'null' ]; then
+    if [ "$version" = 'null' ]; then
         version=""
     fi
 
@@ -137,7 +137,7 @@ index_remove_active() {
 index_get_master_version() {
     vrb "fetching current master version from remote index"
     master_version=$(index_fetch_remote | jq -r ".master.version")
-    if [ -z "$master_version" ] || [ "$master_version" == 'null' ]; then
+    if [ -z "$master_version" ] || [ "$master_version" = 'null' ]; then
         err "failed retrieving master version from remote index"
         exit 1
     fi
@@ -237,12 +237,12 @@ cmd_use() {
         exit 1
     fi
 
-    if [ "$_version" == 'master' ]; then
+    if [ "$_version" = 'master' ]; then
         _version=$(index_get_master_version)
     fi
 
     installed=$(index_fetch_local | jq -r ".releases.\"$_version\"")
-    if [ "$installed" == 'null' ]; then
+    if [ "$installed" = 'null' ]; then
         err "version '$_version' is not installed; install it with '$self_name install $_version'"
         exit 1
     fi
@@ -279,7 +279,7 @@ cmd_install() {
     _version=$1
     index_version=$_version
 
-    if [ "${_version}" == 'master' ]; then
+    if [ "${_version}" = 'master' ]; then
         _version=$(index_get_master_version)
     fi
 
@@ -292,7 +292,7 @@ cmd_install() {
     fi
 
     json=$(index_fetch_remote | jq -r ".\"$index_version\"")
-    if [ "${json}" == 'null' ]; then
+    if [ "${json}" = 'null' ]; then
         err "version '$index_version' not found in remote index"
         exit 1
     fi
@@ -321,7 +321,7 @@ cmd_prune() {
     vrb "pruning unused versions"
 
     for version in $installed; do
-        if [ "$active" == "$version" ];then
+        if [ "$active" = "$version" ];then
             vrb "skipping active version '$active'"
             continue
         fi
@@ -340,7 +340,7 @@ cmd_uninstall() {
     _version=$1
 
     installed=$(jq ".releases.\"$_version\"" $versions_file)
-    if [ -z "$installed" ] || [ "$installed" == 'null' ]; then
+    if [ -z "$installed" ] || [ "$installed" = 'null' ]; then
         err "version '$_version' is not installed"
         exit 1
     fi
@@ -361,7 +361,7 @@ cmd_uninstall() {
     echo "$json" | jq "del(.releases.\"$_version\")" > "$versions_file"
 
     current_install=$(jq -r '.active' $versions_file)
-    if [ "$current_install" == "$_version" ]; then
+    if [ "$current_install" = "$_version" ]; then
         warn "active version was uninstalled; use '$self_name use <version>' to switch to an available version"
         index_remove_active
     fi
