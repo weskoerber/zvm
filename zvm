@@ -114,7 +114,7 @@ index_set_active() {
     vrb "marking '$_version' installed"
 
     current=$(cat "$versions_file")
-    echo "$current" | jq ".active=\"$_version\"" "$versions_file"
+    echo "$current" | jq ".active=\"$_version\"" > "$versions_file"
 }
 
 # Get the active version
