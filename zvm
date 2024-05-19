@@ -279,6 +279,11 @@ cmd_use() {
     src="$ZVM_HOME/$_version/$bin_name"
     dst="$ZVM_BIN/$bin_name"
 
+    if [ "${o_target}#*"windows"}" ]; then
+        src="$src.exe"
+        dst="$dst.exe"
+    fi
+
     # TODO: get the path to the dir
     if ! [ -f "$src" ]; then
         err "file not found: $src"
