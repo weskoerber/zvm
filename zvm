@@ -102,7 +102,7 @@ index_add_release() {
 
     current=$(cat $versions_file)
 
-    jq ".releases.\"$_version\"=$_json" <<< $current > $versions_file
+    jq ".releases.\"$_version\"=$_json" <<< "$current" > "$versions_file"
 }
 
 # Set release active
