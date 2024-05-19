@@ -12,7 +12,7 @@ readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
 readonly arch="$(uname -m)"
 readonly target="${arch}-${os}"
 readonly bin_name="zig"
-readonly self_name=$(basename $0)
+readonly self_name="$(basename "$0")"
 readonly self_version="0.1.0"
 readonly versions_file="${ZVM_HOME}/versions.json"
 
@@ -39,7 +39,7 @@ die() {
 }
 
 panic_missing_prog() {
-    command -v $1 > /dev/null 2>&1 || die "'${1}' is required to run this script"
+    command -v "$1" > /dev/null 2>&1 || die "'${1}' is required to run this script"
 }
 
 ################################################################################
@@ -49,9 +49,9 @@ panic_missing_prog() {
 index_init() {
     mkdir -p "$ZVM_HOME"
 
-    versions=$(jq . $versions_file 2> /dev/null)
-    if ! [ -a "$versions_file" ] || [ -z "$versions" ] || [ "$versions" == 'null' ]; then
-        echo '{"releases": {}, "active": null}' | jq > $versions_file
+    versions=$(jq . "$versions_file" 2> /dev/null)
+    if ! [ -e "${versions_file}" ] || [ -z "${versions}" ] || [ "${versions}" = 'null' ]; then
+        echo '{"releases": {}, "active": null}' | jq > "$versions_file"
     else
         if ! [ -f "$versions_file" ]; then
             die "Version manifest file is not a regular file"
@@ -63,7 +63,7 @@ index_init() {
 index_fetch_local() {
     vrb "reading local index from ${versions_file}"
 
-    jq . $versions_file
+    jq . "$versions_file"
 }
 
 # Read the remote index
@@ -76,7 +76,7 @@ index_fetch_remote() {
         err "curl: $curl_output"
     else
         vrb "successfully fetched index"
-        echo $curl_output
+        echo "$curl_output"
     fi
 }
 
@@ -100,9 +100,9 @@ index_add_release() {
 
     vrb "adding release '$_version' to local index"
 
-    current=$(cat $versions_file)
+    current=$(cat "$versions_file")
 
-    jq ".releases.\"$_version\"=$_json" <<< $current > $versions_file
+    echo "$current" | jq ".releases.\"$_version\"=$_json" > "$versions_file"
 }
 
 # Set release active
@@ -113,36 +113,36 @@ index_set_active() {
 
     vrb "marking '$_version' installed"
 
-    current=$(cat $versions_file)
-    jq ".active=\"$_version\"" <<< $current > $versions_file
+    current=$(cat "$versions_file")
+    echo "$current" | jq ".active=\"$_version\"" > "$versions_file"
 }
 
 # Get the active version
 index_get_active() {
-    version=$(jq -r '.active' $versions_file)
-    if [ "$version" == 'null' ]; then
+    version=$(jq -r '.active' "$versions_file")
+    if [ "$version" = 'null' ]; then
         version=""
     fi
 
-    echo $version
+    echo "$version"
 }
 
 # Remove active version (sets active field to null, doesn't remove anything)
 index_remove_active() {
-    current=$(cat $versions_file)
-    jq ".active=null" <<< $current > $versions_file
+    current=$(cat "$versions_file")
+    echo "$current" | jq ".active=null" > "$versions_file"
 }
 
 # Convert the master tag to a semver by reading remote index
 index_get_master_version() {
     vrb "fetching current master version from remote index"
     master_version=$(index_fetch_remote | jq -r ".master.version")
-    if [ -z "$master_version" ] || [ "$master_version" == 'null' ]; then
+    if [ -z "$master_version" ] || [ "$master_version" = 'null' ]; then
         err "failed retrieving master version from remote index"
         exit 1
     fi
 
-    echo $master_version
+    echo "$master_version"
 }
 
 ################################################################################
@@ -157,23 +157,22 @@ file_download() {
     _version=$1
     _json=$2
 
-    info=$(jq ".\"$target\"" <<< $_json)
+    info=$(echo "$_json" | jq ".\"$target\"")
 
-    tarball=$(jq -r '.tarball' <<< $info)
-    shasum=$(jq -r '.shasum' <<< $info)
-    size=$(jq -r '.size' <<< $info)
+    tarball=$(echo "$info" | jq -r '.tarball')
+    shasum=$(echo "$info" | jq -r '.shasum')
 
 
     filename="$_version.tar.xz"
     path="$ZVM_HOME/$_version/$filename"
-    dir=$(dirname $path)
+    dir=$(dirname "$path")
 
-    mkdir -p $dir
+    mkdir -p "$dir"
 
     vrb "downloading $tarball to $dir"
 
     echo "$shasum *$path" > "$path.shasum"
-    curl_response=$(curl -s --output "$path" "$tarball" 2>&1)
+    curl -s --output "$path" "$tarball" > /dev/null 2>&1
 
     vrb "verifying shasum"
 
@@ -188,7 +187,7 @@ file_download() {
     vrb "shasum verified"
     vrb "extracting $filename"
 
-    tar --strip-components=1 -xf $path -C $dir
+    tar --strip-components=1 -xf "$path" -C "$dir"
 
     vrb "cleaning up"
 
@@ -237,12 +236,12 @@ cmd_use() {
         exit 1
     fi
 
-    if [ "$_version" == 'master' ]; then
+    if [ "$_version" = 'master' ]; then
         _version=$(index_get_master_version)
     fi
 
     installed=$(index_fetch_local | jq -r ".releases.\"$_version\"")
-    if [ "$installed" == 'null' ]; then
+    if [ "$installed" = 'null' ]; then
         err "version '$_version' is not installed; install it with '$self_name install $_version'"
         exit 1
     fi
@@ -255,9 +254,9 @@ cmd_use() {
         err "file not found: $src"
     fi
 
-    ln -sf $src $dst
+    ln -sf "$src" "$dst"
 
-    index_set_active $_version
+    index_set_active "$_version"
 }
 
 # command: install
@@ -279,7 +278,7 @@ cmd_install() {
     _version=$1
     index_version=$_version
 
-    if [ "$_version" == 'master' ]; then
+    if [ "${_version}" = 'master' ]; then
         _version=$(index_get_master_version)
     fi
 
@@ -292,22 +291,22 @@ cmd_install() {
     fi
 
     json=$(index_fetch_remote | jq -r ".\"$index_version\"")
-    if [ "$json" == 'null' ]; then
+    if [ "${json}" = 'null' ]; then
         err "version '$index_version' not found in remote index"
         exit 1
     fi
 
-    file_download $_version "$json"
+    file_download "$_version" "$json"
 
     if [ $? -ne 0 ]; then
         err "failed installing $_version"
         exit 1
     fi
 
-    index_add_release $_version "$json"
+    index_add_release "$_version" "$json"
 
     if [ $o_use -eq 1 ]; then
-        cmd_use $_version
+        cmd_use "$_version"
     fi
 }
 
@@ -315,20 +314,20 @@ cmd_install() {
 # args: none
 # options: none
 cmd_prune() {
-    active=$(jq -r '.active' $versions_file)
+    active=$(jq -r '.active' "$versions_file")
     installed=$(index_list_local)
 
     vrb "pruning unused versions"
 
     for version in $installed; do
-        if [ "$active" == "$version" ];then
+        if [ "$active" = "$version" ];then
             vrb "skipping active version '$active'"
             continue
         fi
 
         vrb "uninstalling '$version'"
 
-        cmd_uninstall $version
+        cmd_uninstall "$version"
     done
 }
 
@@ -339,8 +338,8 @@ cmd_prune() {
 cmd_uninstall() {
     _version=$1
 
-    installed=$(jq ".releases.\"$_version\"" $versions_file)
-    if [ -z "$installed" ] || [ "$installed" == 'null' ]; then
+    installed=$(jq ".releases.\"$_version\"" "$versions_file")
+    if [ -z "$installed" ] || [ "$installed" = 'null' ]; then
         err "version '$_version' is not installed"
         exit 1
     fi
@@ -348,20 +347,20 @@ cmd_uninstall() {
     vrb "removing files from disk"
 
     dir="$ZVM_HOME/$_version"
-    rm -rf $dir
+    rm -rf "$dir"
 
-    if [ -a "$ZVM_BIN/$bin_name" ]; then
+    if [ -e "$ZVM_BIN/$bin_name" ]; then
         unlink "$ZVM_BIN/$bin_name"
     else
         vrb "skipping non-existent symlink"
     fi
 
     vrb "removing from index"
-    json=$(jq . $versions_file)
-    jq "del(.releases.\"$_version\")" <<< $json > $versions_file
+    json=$(jq . "$versions_file")
+    echo "$json" | jq "del(.releases.\"$_version\")" > "$versions_file"
 
-    current_install=$(jq -r '.active' $versions_file)
-    if [ "$current_install" == "$_version" ]; then
+    current_install=$(jq -r '.active' "$versions_file")
+    if [ "$current_install" = "$_version" ]; then
         warn "active version was uninstalled; use '$self_name use <version>' to switch to an available version"
         index_remove_active
     fi
@@ -405,15 +404,13 @@ Environment:
               Default: \$HOME/.local/bin/
 
 usage_text
-
-exit 0
 }
 
 # Ensure all required programs are installed, and panic otherwise
 ensure_required_progs() {
     (
         IFS=','; for prog in $required_progs; do
-            panic_missing_prog $prog
+            panic_missing_prog "$prog"
         done
     )
 }
@@ -490,7 +487,10 @@ args_parse_command() {
 # Script start                                                                 #
 ################################################################################
 
-if [ "$(basename $ZVM_HOME)" != "zvm" ]; then
+! [ -d "$ZVM_HOME" ] && mkdir -p "$ZVM_HOME" > /dev/null
+! [ -d "$ZVM_BIN" ] && mkdir -p "$ZVM_BIN" > /dev/null
+
+if [ "$(basename "$ZVM_HOME")" != "zvm" ]; then
     die "'ZVM_HOME' is invalid (must be named 'zvm')"
     exit 1
 fi
