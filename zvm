@@ -435,6 +435,7 @@ args_parse_global() {
                 ;;
             -vv)
                 o_extra_verbose=1
+                o_verbose=1
                 shift
                 ;;
             -v | --verbose)
