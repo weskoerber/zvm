@@ -4,6 +4,15 @@ A script to manage your [Zig](https://Ziglang.org) versions.
 
 ## Getting Started
 
+First, make sure `ZVM_BIN` is on your `PATH`. By default, it's `~/.local/bin`:[^1]
+- On Linux, `/home/<username>/.local/bin`
+- On Windows, `C:\Users\<username>\.local\bin`
+- On MacOS, `/Users/<username>/.local/bin`
+
+Next, determine if you need to explicitly set your target. On Linux you
+probably won't have to, put if you're on Windows or MacOS, see the
+[Cross-platform support](#cross-platform-support) section below.
+
 ### Prerequisites
 
 - A POSIX-compliant shell
@@ -93,21 +102,19 @@ zvm help
 
 ### Linux
 
-Native support.
+Native support. `zvm`'s detected native target will likely work, but you can
+override it if you need to.
 
 ### Windows
 
-Supported via WSL or git-bash. There's a couple of gotchas, though.
+Supported via various Linux subsystems (git-bash, WSL, etc.).
 
-First, add `%USERPROFILE%\.local\bin`[^1] to your `PATH` in Windows, as that is
-where `zvm` puts the symlinks. If you don't do this, Windows won't know where
-to find the zig executable.
-
-Next, you'll probably want to explicitly define your target. If you don't do
-this, `zvm` uses whichever target is provided by the linux subsystem, be it
-git-bash, WSL, , mingw, etc. Explicitly setting your target ensures `zvm` finds
-the release in zig's download index. You can specify the target with the `-t,
---target` flag, like so:
+`zvm` uses `uname` to detect the target and it currently only uses what `uname`
+provides, which will differ depending on the Linux subsystem used (git-bash,
+WSL, mingw, etc). However, [Zig's
+targets](https://ziglang.org/documentation/master/std/#std.Target.Os.Tag) use
+`windows` as the OS name. Due to this, for now you'll have to explicitly set
+your target:
 
 ```shell
 zvm --target <arch>-windows
@@ -122,9 +129,11 @@ Replace `<arch>` with one of the following:
 
 Supported natively but shares the same gotchas as the Windows support.
 
-First, make sure `~/.local/bin` is on your `PATH`.
-
-Next, explicitly set your target:
+`zvm` uses `uname` to detect the target and it currently only uses what `uname`
+provides. However, [Zig's
+targets](https://ziglang.org/documentation/master/std/#std.Target.Os.Tag) use
+`macos` as the OS name instead of `darwin`, which is what `uname` will return.
+Due to this, for now you'll have to explicitly set your target:
 
 ```shell
 zvm --target <arch>-macos
@@ -137,4 +146,5 @@ Replace `<arch>` with one of the following:
 
 ---
 
-[^1]: Thats most likely `C:\Users\<your_username>\.local\bin`.
+[^1]: You can override this path with the `ZVM_BIN` environment variable. See
+    the [Environment](#environment) section for details.
