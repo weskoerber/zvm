@@ -279,10 +279,12 @@ cmd_use() {
     src="$ZVM_HOME/$_version/$bin_name"
     dst="$ZVM_BIN/$bin_name"
 
-    if [ "${o_target}#*"windows"}" ]; then
-        src="$src.exe"
-        dst="$dst.exe"
-    fi
+    case "$o_target" in
+        *windows*)
+            src="$src.exe"
+            dst="$dst.exe"
+            ;;
+    esac
 
     # TODO: get the path to the dir
     if ! [ -f "$src" ]; then
