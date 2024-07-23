@@ -248,9 +248,9 @@ cmd_list() {
     done
 
     if [ $o_remote -eq 1 ]; then
-        index_list_remote
+        index_list_remote | sort -Vr
     else
-        index_list_local
+        index_list_local | sort -Vr
     fi
 }
 
