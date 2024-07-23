@@ -9,6 +9,7 @@ local -a zvm_aliases
 local -a zvm_global_options
 local -a zvm_list_options
 local -a zvm_install_options
+local -a zvm_uninstall_options
 
 local -a zvm_local_versions
 local -a zvm_remote_versions
@@ -42,6 +43,10 @@ zvm_install_options=(
     '(-u,--use)'{-u,--use}'[Make version active after installing]'
 )
 
+zvm_uninstall_options=(
+    '(-f,--force)'{-f,--force}'[Forcefully uninstall, even if version is active]'
+)
+
 _arguments -C \
     $zvm_global_options \
     "1: :{_describe 'command' zvm_commands -- zvm_aliases}" \
@@ -57,9 +62,15 @@ case $line[1] in
             $zvm_install_options \
             "*:: :{_describe 'command' zvm_remote_versions}"
         ;;
-    rm | uninstall | use)
+    use)
         zvm_local_versions=(${(f)"$(zvm list --installed)"})
         _arguments \
+            "1: :{_describe 'command' zvm_local_versions}"
+        ;;
+    rm | uninstall)
+        zvm_local_versions=(${(f)"$(zvm list --installed)"})
+        _arguments \
+            $zvm_uninstall_options \
             "1: :{_describe 'command' zvm_local_versions}"
         ;;
 esac
