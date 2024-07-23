@@ -371,8 +371,18 @@ cmd_prune() {
 # command: uninstall
 # args:
 #   $1: Version to uninstall
-# options: none
+# options:
+#   -f, --force  Forcefully uninstall, even if version is active
+o_force=0
 cmd_uninstall() {
+    for arg in "$@"; do
+        case $1 in
+            -f|--force)
+                o_force=1
+                shift
+                ;;
+        esac
+    done
     _version=$1
 
     installed=$(jq ".releases.\"$_version\"" "$versions_file")
@@ -381,16 +391,21 @@ cmd_uninstall() {
         exit 1
     fi
 
+    current_install=$(jq -r '.active' "$versions_file")
+    if [ "$current_install" = "$_version" ]; then
+        if [ $o_force -eq 0 ]; then
+            err "will not remove active version (use -f or --force to force)"
+            exit 1
+        fi
+
+        warn "active version was uninstalled; use '$self_name use <version>' to switch to an available version"
+        index_remove_active
+    fi
+
     vrb "removing files from disk"
 
     dir="$ZVM_HOME/$_version"
     rm -rf "$dir"
-
-    current_install=$(jq -r '.active' "$versions_file")
-    if [ "$current_install" = "$_version" ]; then
-        warn "active version was uninstalled; use '$self_name use <version>' to switch to an available version"
-        index_remove_active
-    fi
 
     if [ -e "$ZVM_BIN/$bin_name" ]; then
         if [ "$_version" = "$current_install" ]; then
@@ -419,17 +434,19 @@ Options:
   --version     Print the version and exit
 
 Commands:
-  list [OPTIONS]               List Zig versions available in the remote index
-    -i, --installed            List installed Zig versions
+  list [OPTIONS]                 List Zig versions available in the remote index
+    -i, --installed              List installed Zig versions
 
-  install [OPTIONS] <version>  Install a Zig version
-    -u, --use                  Make version active immediately
+  install [OPTIONS] <version>    Install a Zig version
+    -u, --use                    Make version active immediately
 
-  use <version>                Use an installed Zig version
+  use <version>                  Use an installed Zig version
 
-  uninstall <version>          Uninstall a Zig version
-  prune                        Uninstall all but the currently active version
-  help                         Show this help page
+  uninstall [OPTIONS] <version>  Uninstall a Zig version
+    -f, --force                  Forcefully uninstall, even if version is active
+
+  prune                          Uninstall all but the currently active version
+  help                           Show this help page
 
 Aliases:
   list: ls
