@@ -386,8 +386,16 @@ cmd_uninstall() {
     dir="$ZVM_HOME/$_version"
     rm -rf "$dir"
 
+    current_install=$(jq -r '.active' "$versions_file")
+    if [ "$current_install" = "$_version" ]; then
+        warn "active version was uninstalled; use '$self_name use <version>' to switch to an available version"
+        index_remove_active
+    fi
+
     if [ -e "$ZVM_BIN/$bin_name" ]; then
-        unlink "$ZVM_BIN/$bin_name"
+        if [ "$_version" = "$current_install" ]; then
+            unlink "$ZVM_BIN/$bin_name"
+        fi
     else
         vrb "skipping non-existent symlink"
     fi
@@ -395,12 +403,6 @@ cmd_uninstall() {
     vrb "removing from index"
     json=$(jq . "$versions_file")
     echo "$json" | jq "del(.releases.\"$_version\")" > "$versions_file"
-
-    current_install=$(jq -r '.active' "$versions_file")
-    if [ "$current_install" = "$_version" ]; then
-        warn "active version was uninstalled; use '$self_name use <version>' to switch to an available version"
-        index_remove_active
-    fi
 }
 
 # Print usage and exit
