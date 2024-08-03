@@ -32,7 +32,10 @@ zvm_aliases=(
 
 zvm_global_options=(
     '(-h --help)'{-h,--help}'[Show help]'
-    '(-v --verbose)'{-v,--verbose}'[Show verbose output]'
+    '(-t --target)'{-t,--target}'[Specify target]'
+    '(-v)-v[Print version and exit]'
+    '(--verbose)--verbose[Show verbose output]'
+    '(-vv)-vv[Enable more verbose output]'
 )
 
 zvm_list_options=(
