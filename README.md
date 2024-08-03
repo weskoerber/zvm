@@ -2,6 +2,12 @@
 
 A script to manage your [Zig](https://Ziglang.org) versions.
 
+## Features
+
+- Single POSIX-compliant shell script
+- Shell completions (bash, zsh)
+- Few dependencies (you probably have them installed already)
+
 ## Getting Started
 
 First, make sure `ZVM_BIN` is on your `PATH`. By default, it's `~/.local/bin`:[^1]
@@ -73,6 +79,13 @@ Uninstall a Zig version:
 ```shell
 zvm uninstall 0.11.0
 ```
+
+By default, the `uninstall` command will prevent the current version from being
+uninstalled. To bypass, there are 2 options:
+1. Fall back to the newest installed version with `-l,--use-latest`
+2. Force removal
+    - Note that after forcing removal, the `zig` command will no longer exist
+      and you'll have to use the `use` command to select a new version
 
 ### `help`
 
