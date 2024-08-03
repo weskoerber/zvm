@@ -48,6 +48,7 @@ zvm_install_options=(
 
 zvm_uninstall_options=(
     '(-f,--force)'{-f,--force}'[Forcefully uninstall, even if version is active]'
+    '(-l,--use-latest)'{-l,--use-latest}'[Fallback to latest version after uninstalling]'
 )
 
 _arguments -C \

@@ -372,13 +372,19 @@ cmd_prune() {
 # args:
 #   $1: Version to uninstall
 # options:
-#   -f, --force  Forcefully uninstall, even if version is active
+#   -f, --force       Forcefully uninstall, even if version is active
+#   -l, --use-latest  Fallback to latest version after uninstalling
 o_force=0
+o_use_latest=0
 cmd_uninstall() {
     for arg in "$@"; do
         case $1 in
             -f|--force)
                 o_force=1
+                shift
+                ;;
+            -l|--use-latest)
+                o_use_latest=1
                 shift
                 ;;
         esac
@@ -392,9 +398,9 @@ cmd_uninstall() {
     fi
 
     current_install=$(jq -r '.active' "$versions_file")
-    if [ "$current_install" = "$_version" ]; then
+    if [ "$current_install" = "$_version" ] && [ $o_use_latest -eq 0 ]; then
         if [ $o_force -eq 0 ]; then
-            err "will not remove active version (use -f or --force to force)"
+            err "will not remove active version (use -f to force, or -l to fallback to latest)"
             exit 1
         fi
 
@@ -418,6 +424,8 @@ cmd_uninstall() {
     vrb "removing from index"
     json=$(jq . "$versions_file")
     echo "$json" | jq "del(.releases.\"$_version\")" > "$versions_file"
+
+    cmd_use "$(index_list_local | tail -n 1)"
 }
 
 # Print usage and exit
@@ -443,6 +451,7 @@ Commands:
   use <version>                  Use an installed Zig version
 
   uninstall [OPTIONS] <version>  Uninstall a Zig version
+    -l, --use-latest             Fallback to latest version after uninstalling
     -f, --force                  Forcefully uninstall, even if version is active
 
   prune                          Uninstall all but the currently active version

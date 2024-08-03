@@ -9,7 +9,7 @@ _zvm_completions()
     global_options="-h --help -t --target -v -vv --verbose"
     list_options="-i --installed"
     install_options="-u --use"
-    uninstall_options="-f --force"
+    uninstall_options="-f --force -l --use-latest"
 
     zvm_local_versions="$(zvm list --installed)"
 
