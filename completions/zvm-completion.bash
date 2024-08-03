@@ -1,49 +1,52 @@
 _zvm_completions()
 {
-    local cur prev commands options list_options
+    local cur prev commands global_options list_options
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     commands="help install list prune uninstall use"
-    options="--help --verbose"
+    global_options="-h --help -t --target -v -vv --verbose"
     list_options="-i --installed"
     install_options="-u --use"
     uninstall_options="-f --force"
 
     zvm_local_versions="$(zvm list --installed)"
 
-    # Completing the commands
-    if [[ ${COMP_CWORD} -eq 1 ]]; then
-        COMPREPLY=( $(compgen -W "${options} ${commands}" -- ${cur}) )
+    # Completing the global options for `zvm`
+    if [[ ${COMP_CWORD} -eq 1 ]] && [[ ${cur} == -* ]]; then
+        COMPREPLY=( $(compgen -W "${global_options}" -- ${cur}) )
         return 0
     fi
 
-    case "${COMP_WORDS[1]}" in
-        ls | list)
-            COMPREPLY=( $(compgen -W "${list_options}" -- ${cur}) )
+    # Completing the commands
+    case ${COMP_CWORD} in
+        0)
+            # should never happen?
             return 0
             ;;
-        i | install)
-
-            COMPREPLY=( $(compgen -W "${install_options} $(zvm list)" -- ${cur}) )
-            return 0
-            ;;
-        rm | uninstall)
-            COMPREPLY=( $(compgen -W "${uninstall_options} ${zvm_local_versions}" -- ${cur}) )
-            return 0
-            ;;
-        use)
-            COMPREPLY=( $(compgen -W "${zvm_local_versions}" -- ${cur}) )
+        1)
+            COMPREPLY=( $(compgen -W "${commands}" -- ${cur}) )
             return 0
             ;;
     esac
 
-    # Completing the options for `zvm`
-    if [[ ${cur} == -* ]]; then
-        COMPREPLY=( $(compgen -W "${options}" -- ${cur}) )
-        return 0
-    fi
+    local cmp_list
+    case "${COMP_WORDS[1]}" in
+        ls | list)
+            [[ "${cur}" == -* ]] && cmp_list="${list_options}"
+            ;;
+        i | install)
+            [[ "${cur}" == -* ]] && cmp_list="${install_options}" || cmp_list="$(zvm list)"
+            ;;
+        rm | uninstall)
+            [[ "${cur}" == -* ]] && cmp_list="${uninstall_options}" || cmp_list="${zvm_local_versions}"
+            ;;
+        use)
+            cmp_list="${zvm_local_versions}"
+            ;;
+    esac
+    COMPREPLY=( $(compgen -W "${cmp_list}" -- ${cur}) )
 }
 
 complete -F _zvm_completions zvm
