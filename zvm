@@ -225,6 +225,52 @@ file_download() {
     rm "$path.shasum"
 }
 
+file_download_2() {
+    _version=$1
+
+    case "$o_target" in
+        *windows*)
+            extension='.zip'
+            ;;
+        *)
+            extension='.tar.xz'
+            ;;
+    esac
+
+    _arch=$(echo "${o_target}" | cut -d - -f 1)
+    _os=$(echo "${o_target}" | cut -d - -f 2)
+
+    tarball="https://ziglang.org/builds/zig-${_os}-${_arch}-${_version}${extension}"
+
+    filename="${_version}${extension}"
+    path="$ZVM_HOME/$_version/$filename"
+    dir=$(dirname "$path")
+
+    mkdir -p "$dir"
+
+    vrb "downloading $tarball ($extension) to $dir"
+
+    curl -s --output "$path" "$tarball" > /dev/null 2>&1
+
+    size=$(du -b "$path" | awk '{print $1}')
+
+    vrb "extracting $filename"
+
+    if [ "$extension" = '.tar.xz' ]; then
+        tar --strip-components=1 -xf "$path" -C "$dir"
+    elif [ "$extension" = '.zip' ]; then
+        unzip -q "$path" -d "$dir"
+        mv $dir/zig-*/* "$dir"
+        rm -r $dir/zig-*
+    fi
+
+    vrb "cleaning up"
+
+    rm "$path"
+
+    echo "{\"${o_target}\":{\"tarball\":\"${tarball}\",\"size\":${size}}}"
+}
+
 ################################################################################
 # Command functions                                                            #
 ################################################################################
@@ -300,11 +346,18 @@ cmd_use() {
 # args:
 #   $1  Version name from index
 # options:
-#   -u, --use  Make active immediately after install
+#   -e, --exact  Attempt to install version, even if it doesn't exist in the
+#                index
+#   -u, --use    Make active immediately after install
+o_exact=0
 o_use=0
 cmd_install() {
     for arg in "$@"; do
         case $1 in
+            -e|--exact)
+                o_exact=1
+                shift
+                ;;
             -u|--use)
                 o_use=1
                 shift
@@ -328,12 +381,16 @@ cmd_install() {
     fi
 
     json=$(index_fetch_remote | jq -r ".\"$index_version\"")
-    if [ "${json}" = 'null' ]; then
+    if [ "${json}" = 'null' ] && [ $o_exact -eq 0 ]; then
         err "version '$index_version' not found in remote index"
         exit 1
     fi
 
-    file_download "$_version" "$json"
+    if [ $o_exact -eq 1 ]; then
+        json=$(file_download_2 "$_version")
+    else
+        file_download "$_version" "$json"
+    fi
 
     if [ $? -ne 0 ]; then
         err "failed installing $_version"
