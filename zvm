@@ -225,7 +225,10 @@ file_download() {
     rm "$path.shasum"
 }
 
-file_download_2() {
+# Download a file without release JSON from the index
+# args:
+#   $1  release name
+file_download_no_checksum() {
     _version=$1
 
     case "$o_target" in
@@ -387,7 +390,7 @@ cmd_install() {
     fi
 
     if [ $o_exact -eq 1 ]; then
-        json=$(file_download_2 "$_version")
+        json=$(file_download_no_checksum "$_version")
     else
         file_download "$_version" "$json"
     fi
