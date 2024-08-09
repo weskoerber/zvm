@@ -1,6 +1,6 @@
 # zvm - Zig Version Manager
 
-A script to manage your [Zig](https://Ziglang.org) versions.
+A script to manage your [Zig](https://ziglang.org) versions.
 
 ## Features
 
@@ -16,7 +16,7 @@ First, make sure `ZVM_BIN` is on your `PATH`. By default, it's `~/.local/bin`:[^
 - On MacOS, `/Users/<username>/.local/bin`
 
 Next, determine if you need to explicitly set your target. On Linux you
-probably won't have to, put if you're on Windows or MacOS, see the
+probably won't have to. If you're on Windows or MacOS, see the
 [Cross-platform support](#cross-platform-support) section below.
 
 ### Prerequisites
@@ -29,8 +29,8 @@ probably won't have to, put if you're on Windows or MacOS, see the
 
 ### Usage
 
-Without any commands, `zvm` will print the currently active Zig version and
-exit. Specific actions may be performed my providing a command.
+Without any commands, `zvm` will print the active Zig version and exit.
+Specific actions may be performed my providing a command.
 
 ## Commands
 
@@ -101,11 +101,11 @@ zvm help
 ### Environment
 
 - `ZVM_HOME` - `zvm` home directory (where `zvm` downloads and extracts Zig tarballs)
-- `ZVM_BIN` - `zvm` bin directory (where `zvm` links Zig binaries)
+- `ZVM_BIN` - `zvm` bin directory (where `zvm` symlinks Zig binaries)
 
 ## TODO
 
-- [ ] Support building from source?
+- [ ] Support building from source? (in-progress, see #14)
 - [x] Allow custom download location (default: `$HOME/.local/share/zvm`)
     - 9b1afd4
 - [x] Allow custom install prefix (default: `$HOME/.local/bin/zig`)
