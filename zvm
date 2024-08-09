@@ -226,6 +226,35 @@ file_download() {
 }
 
 ################################################################################
+# Source functions                                                             #
+################################################################################
+src_build() {
+    _ref="master"
+    cpus=$(sed -nr 's/siblings\s+: ([0-9]+)/\1/p' /proc/cpuinfo | head -n 1)
+
+    src_path="${ZVM_HOME}/src"
+
+    if [ -d "$src_path" ]; then
+        vrb "checking out ${_ref}"
+        git -C "$src_path" switch -d -q origin/master
+    else
+        vrb "cloning https://github.com/ziglang/zig#${_ref}"
+        git clone -b "$_ref" -n -o origin -q https://github.com/ziglang/zig "$src_path"
+    fi
+
+    vrb "pulling https://github.com/ziglang/zig#${_ref}"
+    git -C "$src_path" pull -q origin "$_ref"
+
+    vrb "configuring build with cmake"
+    cmake -S "$src_path" -B "${src_path}/build" > /dev/null
+
+    vrb2 "building zig with ${cpus} jobs"
+    cmake --build "${src_path}/build" -- -j "$cpus"
+
+    "${src_path}/build/stage3/bin/zig" version
+}
+
+################################################################################
 # Command functions                                                            #
 ################################################################################
 
@@ -300,11 +329,17 @@ cmd_use() {
 # args:
 #   $1  Version name from index
 # options:
+#   -s, --src  Build from source
 #   -u, --use  Make active immediately after install
+o_src=0
 o_use=0
 cmd_install() {
     for arg in "$@"; do
         case $1 in
+            -s|--src)
+                o_src=1
+                shift
+                ;;
             -u|--use)
                 o_use=1
                 shift
@@ -314,6 +349,11 @@ cmd_install() {
 
     _version=$1
     index_version=$_version
+
+    if [ $o_src -eq 1 ]; then
+        src_build
+        return 0
+    fi
 
     if [ "${_version}" = 'master' ]; then
         _version=$(index_get_master_version)
