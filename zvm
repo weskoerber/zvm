@@ -382,6 +382,7 @@ cmd_use() {
 #                index
 #   -s, --src  Build from source
 #   -u, --use  Make active immediately after install
+o_exact=0
 o_src=0
 o_use=0
 cmd_install() {
