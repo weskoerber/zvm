@@ -7,7 +7,7 @@ ZVM_HOME=${ZVM_HOME:-$install_dir}
 ZVM_BIN=${ZVM_BIN:-$bin_dir}
 
 readonly url="https://ziglang.org/download/index.json"
-readonly required_progs="curl,jq,shasum,tar,unzip"
+readonly required_progs="curl,jq,sha256sum,tar,unzip"
 readonly supported_extensions=".tar.xz"
 readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
 readonly arch="$(uname -m)"
@@ -200,7 +200,7 @@ file_download() {
 
     vrb "verifying shasum"
 
-    shasum -sc "$path.shasum"
+    sha256sum --status --check "$path.shasum"
     sha_result=$?
 
     if [ $sha_result -ne 0 ]; then
