@@ -8,7 +8,7 @@ _zvm_completions()
     commands="help install list prune uninstall use"
     global_options="-h --help -t --target -v -vv --verbose"
     list_options="-i --installed"
-    install_options="-e --exact -u --use"
+    install_options="-e --exact -s --src -u --use"
     uninstall_options="-f --force -l --use-latest"
 
     zvm_local_versions="$(zvm list --installed)"
