@@ -506,6 +506,8 @@ Commands:
     -i, --installed              List installed Zig versions
 
   install [OPTIONS] <version>    Install a Zig version
+    -e, --exact                  Attempt to install version, even if it doesn't
+                                 exist in the remote index
     -u, --use                    Make version active immediately
 
   use <version>                  Use an installed Zig version
