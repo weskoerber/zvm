@@ -488,6 +488,10 @@ cmd_uninstall() {
     cmd_use "$(index_list_local | tail -n 1)"
 }
 
+################################################################################
+# Helper functions                                                             #
+################################################################################
+
 # Print usage and exit
 usage() {
     cat >&2 <<usage_text
@@ -622,6 +626,18 @@ args_parse_command() {
     done
 }
 
+assume_target() {
+    assumed_os="$os"
+
+    case "$os" in
+        *mingw*)
+            assumed_os='windows'
+            ;;
+    esac
+
+    o_target="${arch}-${assumed_os}"
+}
+
 ################################################################################
 # Script start                                                                 #
 ################################################################################
@@ -636,6 +652,7 @@ fi
 
 ensure_required_progs
 index_init
+assume_target
 
 # TODO(cleanup): have to call args_parse_global twice: first to set global
 # options, then to get command without global options
