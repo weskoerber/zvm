@@ -2,6 +2,8 @@
 
 A script to manage your [Zig](https://ziglang.org) versions.
 
+<img alt="zvm demo" src="https://raw.githubusercontent.com/weskoerber/zvm/main/img/zvm.gif" width="600" />
+
 ## Features
 
 - Single POSIX-compliant shell script
