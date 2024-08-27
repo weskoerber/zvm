@@ -44,6 +44,7 @@ zvm_list_options=(
 
 zvm_install_options=(
     '(-e,--exact)'{-e,--exact}"[Attempt to install version, even if it doesn't exist in remote index]"
+    '(-s,--src)'{-s,--src}'[Build from source]'
     '(-u,--use)'{-u,--use}'[Make version active after installing]'
 )
 
