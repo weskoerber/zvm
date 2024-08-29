@@ -30,7 +30,7 @@ vrb() {
 }
 
 vrb2() {
-    [ $o_extra_verbose -eq 1 ] && echo "vrb ${1}" >&2
+    [ $o_extra_verbose -eq 1 ] && echo "vrb: ${1}" >&2
 }
 
 warn() {
