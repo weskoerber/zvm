@@ -24,10 +24,17 @@ probably won't have to. If you're on Windows or MacOS, see the
 ### Prerequisites
 
 - A POSIX-compliant shell
+- [GNU coreutils](https://www.gnu.org/software/coreutils)
 - [curl](https://curl.se/download.html)
 - [jq](https://jqlang.github.io/jq/)
-- tar
+- GNU tar
 - unzip
+
+If you're building from source (`zvm install --src`), you'll need the
+following dependencies, in addition to those listed above:
+- [cmake](https://cmake.org) (version 3.15 or newer)
+- [git](https://git-scm.org)
+- GNU sed
 
 ### Usage
 
@@ -122,27 +129,15 @@ override it if you need to.
 
 ### Windows
 
-Supported via various Linux subsystems (git-bash, WSL, etc.).
-
-`zvm` uses `uname` to detect the target and it currently only uses what `uname`
-provides, which will differ depending on the Linux subsystem used (git-bash,
-WSL, mingw, etc). However, [Zig's
-targets](https://ziglang.org/documentation/master/std/#std.Target.Os.Tag) use
-`windows` as the OS name. Due to this, for now you'll have to explicitly set
-your target:
-
-```shell
-zvm --target <arch>-windows
-```
-
-Replace `<arch>` with one of the following:
-- On a 32-bit system, `x86` (e.g. `x86-windows`)
-- On a 64-bit x86 system, `x86-64` (e.g. `x86_64-windows`)
-- On a 64-bit aarch64 system, aarch64 (e.g. `aarch64-windows`)
+Windows is not natively supported. However, support exists for WSL2 and
+`git-bash`.
 
 ### MacOS
 
-Supported natively but shares the same gotchas as the Windows support.
+I have no idea if `zvm` works on MacOS or not. If you're using MacOS and would
+like to help bring official support to MacOS, please submit a PR! With that
+said, as long as the dependencies exist, MacOS should be supported. You may
+need to manually specify your target.
 
 `zvm` uses `uname` to detect the target and it currently only uses what `uname`
 provides. However, [Zig's
