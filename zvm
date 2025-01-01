@@ -1,12 +1,10 @@
 #!/bin/sh
 
-readonly install_dir="$HOME/.local/share/zvm"
-readonly bin_dir="$HOME/.local/bin"
+ZVM_HOME=${ZVM_HOME:-"$HOME/.local/share/zvm"}
+ZVM_BIN=${ZVM_BIN:-"$HOME/.local/bin"}
+ZVM_MIRROR="${ZVM_MIRROR:-}"
+ZVM_MIRRORLIST="${ZVM_MIRRORLIST:-https://raw.githubusercontent.com/mlugg/setup-zig/refs/heads/main/mirrors.json}"
 
-ZVM_HOME=${ZVM_HOME:-$install_dir}
-ZVM_BIN=${ZVM_BIN:-$bin_dir}
-
-readonly url="https://ziglang.org/download/index.json"
 readonly required_progs="curl,jq,sha256sum,tar,unzip"
 readonly supported_extensions=".tar.xz"
 readonly os="$(uname | tr '[:upper:]' '[:lower:]')"
@@ -16,6 +14,7 @@ readonly bin_name="zig"
 readonly self_name="$(basename "$0")"
 readonly self_version="0.1.0"
 readonly versions_file="${ZVM_HOME}/versions.json"
+readonly mirrors_file="${ZVM_HOME}/mirrors.json"
 
 # Global options
 o_verbose=0
@@ -50,6 +49,38 @@ panic_missing_prog() {
 }
 
 ################################################################################
+# Mirror functions                                                             #
+################################################################################
+# Initialize the mirror list
+mirrors_init() {
+    if ! [ -f "$mirrors_file" ]; then
+        vrb 'creating new mirrors.json'
+
+        mkdir -p "$ZVM_HOME"
+
+        url_json="$(printf '{"url":"%s"}' "$ZVM_MIRRORLIST")"
+        mirrorlist="$(curl -s "$ZVM_MIRRORLIST")"
+
+        echo "$url_json" | jq --argjson list "$mirrorlist" '.+={mirrors: $list}' > "$mirrors_file"
+    fi
+}
+
+# Retrieve a mirror from the mirror list at random
+mirror_random() {
+    file_data=$(cat "$mirrors_file")
+
+    count=$(echo "$file_data" | jq -r '.mirrors|length')
+    i=$(shuf -i 0-$(( count - 1 )) -n 1)
+    mirror=$(echo "$file_data" | jq --argjson i $i '.mirrors[$i]')
+    mirror_url="$(echo "$mirror" | jq -r '.[0]')"
+    mirror_contact="$(echo "$mirror" | jq -r '.[1]')"
+
+    vrb "download mirror is '$mirror_url' from '$mirror_contact'"
+
+    echo "$mirror_url"
+}
+
+################################################################################
 # Index functions                                                              #
 ################################################################################
 # Initialize the local index file
@@ -75,8 +106,12 @@ index_fetch_local() {
 
 # Read the remote index
 index_fetch_remote() {
-    vrb "fetching remote index from ${url}"
-    curl_output=$(curl -s "${url}")
+    mirrors_init
+    ZVM_MIRROR="${ZVM_MIRROR:-"$(mirror_random)"}"
+    index="$ZVM_MIRROR/index.json"
+
+    vrb "fetching remote index from $index"
+    curl_output=$(curl -s "$index")
 
     if [ $? -ne 0 ]; then
         err "failed fetching index"
