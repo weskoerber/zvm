@@ -104,6 +104,10 @@ zvm help
 
 - `ZVM_HOME` - `zvm` home directory (where `zvm` downloads and extracts Zig tarballs)
 - `ZVM_BIN` - `zvm` bin directory (where `zvm` symlinks Zig binaries)
+- `ZVM_MIRROR` - Specify a mirror to use
+- `ZVM_MIRRORLIST` - Specify the source for the list of mirrors `zvm` considers
+    - By default, this is `mirrors.json` from
+    [mlugg/setup-zig](https://raw.githubusercontent.com/mlugg/setup-zig/refs/heads/main/mirrors.json)
 
 ## TODO
 
