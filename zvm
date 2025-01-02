@@ -568,9 +568,10 @@ Environment:
   ZVM_HOME  Path where zvm downloads and extracts zig releases
               Default: \$HOME/.local/share/zvm/
 
-  ZVM_BIN   Path where zvm symlinks zig binaries
-              Default: \$HOME/.local/bin/
-
+  ZVM_BIN        Path where zvm symlinks zig binaries
+  ZVM_MIRROR     URL to mirror. If set, zvm will not choose a random one from
+                 ZVM_MIRRORLIST
+ ZVM_MIRRORLIST  List of mirrors zvm considers
 usage_text
 }
 
