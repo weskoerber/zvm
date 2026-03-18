@@ -1,6 +1,6 @@
-#compdef zvm
+#compdef zvm.sh
 
-if ! command -v zvm &> /dev/null; then
+if ! command -v zvm.sh &> /dev/null; then
     return
 fi
 
@@ -62,18 +62,18 @@ case $line[1] in
         _arguments $zvm_list_options
         ;;
     i | install)
-        zvm_remote_versions=(${(f)"$(zvm list)"})
+        zvm_remote_versions=(${(f)"$(zvm.sh list)"})
         _arguments \
             $zvm_install_options \
             "*:: :{_describe 'command' zvm_remote_versions}"
         ;;
     use)
-        zvm_local_versions=(${(f)"$(zvm list --installed)"})
+        zvm_local_versions=(${(f)"$(zvm.sh list --installed)"})
         _arguments \
             "1: :{_describe 'command' zvm_local_versions}"
         ;;
     rm | uninstall)
-        zvm_local_versions=(${(f)"$(zvm list --installed)"})
+        zvm_local_versions=(${(f)"$(zvm.sh list --installed)"})
         _arguments \
             $zvm_uninstall_options \
             "1: :{_describe 'command' zvm_local_versions}"
