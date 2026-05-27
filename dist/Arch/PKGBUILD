@@ -1,0 +1,35 @@
+# Maintainer: Wes Koerber <wes@weskoerber.com>
+pkgname='zvm.sh-git'
+pkgver='0.2.1.r2.ga7e47db'
+pkgrel=1
+pkgdesc='A POSIX-compliant shell script to manage multiple active Zig versions.'
+arch=('any')
+url='https://codeberg.org/weskoerber/zvm.sh'
+license=('MIT')
+depends=(
+    'coreutils'
+    'curl'
+    'gawk'
+    'jq'
+    'tar'
+    'unzip'
+)
+makedepends=('git')
+optdepends=(
+    'bash: bash shell completions'
+    'zsh: zsh shell completions'
+)
+provides=("${pkgname%-git}")
+conflicts=("${pkgname%-git}")
+source=("${pkgname}::git+${url}.git")
+b2sums=('SKIP')
+
+pkgver() {
+    git -C "$pkgname" describe --long --tags | sed 's/^v//;s/-/.r/;s/-/./'
+}
+
+package() {
+    install -Dm644 "${pkgname}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 "${pkgname}/README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    install -Dm755 "${pkgname}/zvm.sh" "${pkgdir}/usr/bin/zvm.sh"
+}

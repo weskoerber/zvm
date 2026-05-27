@@ -11,7 +11,7 @@ _zvm_completions()
     install_options="-e --exact -u --use"
     uninstall_options="-f --force -l --use-latest"
 
-    zvm_local_versions="$(zvm list --installed)"
+    zvm_local_versions="$(zvm.sh list --installed)"
 
     # Completing the global options for `zvm`
     if [[ ${COMP_CWORD} -eq 1 ]] && [[ ${cur} == -* ]]; then
@@ -37,7 +37,7 @@ _zvm_completions()
             [[ "${cur}" == -* ]] && cmp_list="${list_options}"
             ;;
         i | install)
-            [[ "${cur}" == -* ]] && cmp_list="${install_options}" || cmp_list="$(zvm list)"
+            [[ "${cur}" == -* ]] && cmp_list="${install_options}" || cmp_list="$(zvm.sh list)"
             ;;
         rm | uninstall)
             [[ "${cur}" == -* ]] && cmp_list="${uninstall_options}" || cmp_list="${zvm_local_versions}"
@@ -49,4 +49,4 @@ _zvm_completions()
     COMPREPLY=( $(compgen -W "${cmp_list}" -- ${cur}) )
 }
 
-complete -F _zvm_completions zvm
+complete -F _zvm_completions zvm.sh

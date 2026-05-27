@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-ZVM_HOME=${ZVM_HOME:-"$HOME/.local/share/zvm"}
+ZVM_HOME=${ZVM_HOME:-"$HOME/.local/share/zvm.sh"}
 ZVM_BIN=${ZVM_BIN:-"$HOME/.local/bin"}
 ZVM_MIRROR="${ZVM_MIRROR:-}"
 ZVM_MIRRORLIST="${ZVM_MIRRORLIST:-https://ziglang.org/download/community-mirrors.txt}"
@@ -76,7 +76,7 @@ mirrors_init_force() {
 
     mkdir -p "$ZVM_HOME"
 
-    curl -s "$ZVM_MIRRORLIST" -o "$mirrors_file"
+    curl -fs "$ZVM_MIRRORLIST" -o "$mirrors_file" || die "syncing community mirrors failed"
 }
 
 # Retrieve a mirror from the mirror list at random
@@ -104,7 +104,7 @@ index_init() {
         echo '{"releases": {}, "active": null}' | jq > "$versions_file"
     else
         if ! [ -f "$versions_file" ]; then
-            die "Version manifest file is not a regular file"
+            die "version manifest file is not a regular file"
         fi
     fi
 }
@@ -123,7 +123,7 @@ index_fetch_remote() {
     index="$ZVM_MIRROR/index.json"
 
     vrb "fetching remote index from $index"
-    if ! curl_output=$(curl -s "$index"); then
+    if ! curl_output=$(curl -fs "$index"); then
         err "failed fetching index"
         err "curl: $curl_output"
     else
@@ -243,9 +243,11 @@ file_download() {
     vrb "downloading $tarball ($extension) to $dir"
 
     echo "$shasum *$path" > "$path.shasum"
-    curl -s --output "$path" \
+    if ! curl -fs --output "$path" \
         --get --data 'source=weskoerber-zvm.sh' \
-        "$tarball" > /dev/null 2>&1
+        "$tarball" > /dev/null 2>&1; then
+        die "download failed"
+    fi
 
     vrb "verifying shasum"
 
@@ -302,9 +304,11 @@ file_download_no_checksum() {
 
     vrb "downloading $tarball ($extension) to $dir"
 
-    curl -s --output "$path" \
+    if ! curl -fs --output "$path" \
         --get --data 'source=weskoerber-zvm.sh' \
-        "$tarball" > /dev/null 2>&1
+        "$tarball" > /dev/null 2>&1; then
+        die "download failed"
+    fi
 
     size=$(du -b "$path" | awk '{print $1}')
 
@@ -455,26 +459,6 @@ cmd_install() {
     done
 
     _version=$1
-    index_version=$_version
-    index="$(index_fetch_remote)"
-
-    if [ "${_version}" = 'master' ]; then
-        _version="$(echo "$index" | index_get_master_version)"
-    fi
-
-    vrb "installing '$_version'"
-
-    installed=$(index_fetch_local | jq -r ".releases.\"$_version\"")
-    if [ "$installed" != 'null' ]; then
-        err "version '$_version' is already installed; see '$self_name use $_version'"
-        exit 1
-    fi
-
-    json=$(echo "$index" | jq -r ".\"$index_version\"")
-    if [ "${json}" = 'null' ] && [ $o_exact -eq 0 ]; then
-        err "version '$index_version' not found in remote index"
-        exit 1
-    fi
 
     if [ $o_exact -eq 1 ]; then
         if ! json=$(file_download_no_checksum "$_version"); then
@@ -482,6 +466,27 @@ cmd_install() {
             exit 1
         fi
     else
+        index_version=$_version
+        index="$(index_fetch_remote)"
+
+        if [ "${_version}" = 'master' ]; then
+            _version="$(echo "$index" | index_get_master_version)"
+        fi
+
+        vrb "installing '$_version'"
+
+        installed=$(index_fetch_local | jq -r ".releases.\"$_version\"")
+        if [ "$installed" != 'null' ]; then
+            err "version '$_version' is already installed; see '$self_name use $_version'"
+            exit 1
+        fi
+
+        json=$(echo "$index" | jq -r ".\"$index_version\"")
+        if [ "${json}" = 'null' ] && [ $o_exact -eq 0 ]; then
+            err "version '$index_version' not found in remote index"
+            exit 1
+        fi
+
         if ! file_download "$_version" "$json"; then
             err "failed installing $_version"
             exit 1
@@ -611,7 +616,7 @@ usage() {
     cat >&2 <<usage_text
 $self_name - Zig Version Manager
 
-Usage: zvm [OPTIONS] [command] [...]
+Usage: zvm.sh [OPTIONS] [command] [...]
 
 Options:
   -t, --target  Specify a custom target to use
@@ -650,7 +655,7 @@ Aliases:
 
 Environment:
   ZVM_HOME  Path where zvm downloads and extracts zig releases
-              Default: \$HOME/.local/share/zvm/
+              Default: \$HOME/.local/share/zvm.sh/
 
   ZVM_BIN        Path where zvm symlinks zig binaries
   ZVM_MIRROR     URL to mirror. If set, zvm will not choose a random one from
