@@ -1,6 +1,6 @@
 # Maintainer: Wes Koerber <wes@weskoerber.com>
 pkgname='zvm.sh-git'
-pkgver='0.2.1.r2.ga7e47db'
+pkgver=0.2.1.r4.g7ac2946
 pkgrel=1
 pkgdesc='A POSIX-compliant shell script to manage multiple active Zig versions.'
 arch=('any')
@@ -32,4 +32,7 @@ package() {
     install -Dm644 "${pkgname}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
     install -Dm644 "${pkgname}/README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
     install -Dm755 "${pkgname}/zvm.sh" "${pkgdir}/usr/bin/zvm.sh"
+
+    install -Dm644 "${pkgname}/completions/zvm-completions.bash" "${pkgdir}/usr/share/bash-completion/completions/zvm.sh"
+    install -Dm644 "${pkgname}/completions/zvm-completions.zsh" "${pkgdir}/usr/share/zsh/site-functions/_zvm.sh"
 }
